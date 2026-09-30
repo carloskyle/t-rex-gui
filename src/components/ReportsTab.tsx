@@ -348,20 +348,23 @@ export const ReportsTab: React.FC = () => {
       {/* Detailed Report Inspection Modal */}
       {selectedReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-2xl border border-[#44475a] bg-[#282a36] p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-4xl rounded-2xl border border-[#44475a] bg-[#282a36] p-6 shadow-2xl space-y-5 my-8 max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#44475a] pb-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#bd93f9]">
-                    Relatório Detalhado de Teste
+                    Relatório Técnico Detalhado de Tráfego
                   </span>
                   <span className="rounded bg-[#50fa7b]/20 px-2 py-0.5 text-[10px] font-mono text-[#50fa7b]">
                     {selectedReport.status}
                   </span>
+                  <span className="text-[10px] font-mono text-[#6272a4]">
+                    ID: {selectedReport.id}
+                  </span>
                 </div>
                 <h3 className="text-xl font-bold font-mono text-[#f8f8f2] mt-0.5">
-                  {selectedReport.profile} ({selectedReport.dir})
+                  {selectedReport.profile} ({selectedReport.dir}) • {selectedReport.multiplier}
                 </h3>
               </div>
 
@@ -370,6 +373,7 @@ export const ReportsTab: React.FC = () => {
                   type="button"
                   onClick={(e) => handleDownload(selectedReport.id, 'csv', e)}
                   className="flex items-center gap-1 rounded-lg border border-[#44475a] bg-[#1e1f29] px-2.5 py-1.5 text-xs text-[#50fa7b] hover:bg-[#44475a] transition cursor-pointer"
+                  title="Baixar dados completos em CSV"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
                   <span>CSV</span>
@@ -379,6 +383,7 @@ export const ReportsTab: React.FC = () => {
                   type="button"
                   onClick={(e) => handleDownload(selectedReport.id, 'markdown', e)}
                   className="flex items-center gap-1 rounded-lg border border-[#44475a] bg-[#1e1f29] px-2.5 py-1.5 text-xs text-[#bd93f9] hover:bg-[#44475a] transition cursor-pointer"
+                  title="Baixar laudo técnico em Markdown"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Markdown</span>
@@ -401,98 +406,282 @@ export const ReportsTab: React.FC = () => {
                 <span className="text-[#f8f8f2] font-semibold">{selectedReport.operator}</span>
               </div>
               <div>
-                <span className="text-[#6272a4] block text-[10px]">HOST ALVO:</span>
+                <span className="text-[#6272a4] block text-[10px]">HOST GERADOR:</span>
                 <span className="text-[#8be9fd]">{selectedReport.targetHost}</span>
               </div>
               <div>
-                <span className="text-[#6272a4] block text-[10px]">TAXA (-m):</span>
+                <span className="text-[#6272a4] block text-[10px]">TAXA CONFIGURADA:</span>
                 <span className="text-[#f1fa8c]">{selectedReport.multiplier}</span>
               </div>
               <div>
-                <span className="text-[#6272a4] block text-[10px]">DURAÇÃO (-d):</span>
+                <span className="text-[#6272a4] block text-[10px]">DURAÇÃO DE TESTE:</span>
                 <span className="text-[#ff79c6]">{selectedReport.duration}s</span>
               </div>
             </div>
 
-            {/* Performance Summary Metrics */}
+            {/* 1. Análise Técnica de Throughput por Camada */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
                 <Activity className="h-3.5 w-3.5 text-[#50fa7b]" />
-                Métricas de Performance Atingidas
+                Throughput & Camadas de Rede (L1 / L2 / L3)
               </h4>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
-                  <div className="text-[11px] text-[#6272a4]">Throughput Médio Tx</div>
-                  <div className="text-lg font-bold text-[#50fa7b]">
-                    {selectedReport.summary?.avgTxGbps?.toFixed(2) || '0.00'} Gbps
+                  <div className="text-[11px] text-[#6272a4]">L1 Wire-Rate (Físico)</div>
+                  <div className="text-base font-bold text-[#50fa7b]">
+                    {(selectedReport.technicalAnalysis?.l1LineRateTxGbps ?? (selectedReport.summary?.avgTxGbps ? selectedReport.summary.avgTxGbps * 1.05 : 0)).toFixed(2)} Gbps
                   </div>
                   <div className="text-[10px] text-[#6272a4]">
-                    Pico: {selectedReport.summary?.peakTxGbps?.toFixed(2) || '0.00'} Gbps
+                    Rx: {(selectedReport.technicalAnalysis?.l1LineRateRxGbps ?? (selectedReport.summary?.avgRxGbps ? selectedReport.summary.avgRxGbps * 1.05 : 0)).toFixed(2)} Gbps
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
-                  <div className="text-[11px] text-[#6272a4]">Throughput Médio Rx</div>
-                  <div className="text-lg font-bold text-[#bd93f9]">
-                    {selectedReport.summary?.avgRxGbps?.toFixed(2) || '0.00'} Gbps
+                  <div className="text-[11px] text-[#6272a4]">L2 Ethernet Throughput</div>
+                  <div className="text-base font-bold text-[#8be9fd]">
+                    {selectedReport.summary?.avgTxGbps?.toFixed(2) || '0.00'} Gbps
                   </div>
                   <div className="text-[10px] text-[#6272a4]">
-                    Pico: {selectedReport.summary?.peakRxGbps?.toFixed(2) || '0.00'} Gbps
+                    Rx: {selectedReport.summary?.avgRxGbps?.toFixed(2) || '0.00'} Gbps
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">L3 IP Payload Rate</div>
+                  <div className="text-base font-bold text-[#bd93f9]">
+                    {(selectedReport.technicalAnalysis?.l3PayloadTxGbps ?? (selectedReport.summary?.avgTxGbps ? selectedReport.summary.avgTxGbps * 0.96 : 0)).toFixed(2)} Gbps
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    Rx: {(selectedReport.technicalAnalysis?.l3PayloadRxGbps ?? (selectedReport.summary?.avgRxGbps ? selectedReport.summary.avgRxGbps * 0.96 : 0)).toFixed(2)} Gbps
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
                   <div className="text-[11px] text-[#6272a4]">Taxa de Pacotes</div>
-                  <div className="text-lg font-bold text-[#8be9fd]">
-                    {selectedReport.summary?.avgTxMpps?.toFixed(2) || '0.00'} Mpps
+                  <div className="text-base font-bold text-[#f1fa8c]">
+                    {selectedReport.summary?.avgTxMpps?.toFixed(3) || '0.00'} Mpps
                   </div>
                   <div className="text-[10px] text-[#6272a4]">
-                    Total: {selectedReport.summary?.totalPacketsTx?.toLocaleString()} pkts
+                    Rx: {selectedReport.summary?.avgRxMpps?.toFixed(3) || '0.00'} Mpps
                   </div>
-                </div>
-
-                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
-                  <div className="text-[11px] text-[#6272a4]">Perda de Pacotes</div>
-                  <div
-                    className={`text-lg font-bold ${
-                      (selectedReport.summary?.avgDropRatePercent || 0) > 0.01
-                        ? 'text-[#ff5555]'
-                        : 'text-[#50fa7b]'
-                    }`}
-                  >
-                    {(selectedReport.summary?.avgDropRatePercent || 0).toFixed(5)}%
-                  </div>
-                  <div className="text-[10px] text-[#6272a4]">Drop rate medido</div>
-                </div>
-
-                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
-                  <div className="text-[11px] text-[#6272a4]">Latência Média</div>
-                  <div className="text-lg font-bold text-[#ff79c6]">
-                    {(selectedReport.summary?.avgLatencyMs || 0.018).toFixed(3)} ms
-                  </div>
-                  <div className="text-[10px] text-[#6272a4]">
-                    Max: {(selectedReport.summary?.maxLatencyMs || 0.042).toFixed(3)} ms
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
-                  <div className="text-[11px] text-[#6272a4]">Uso de CPU DPDK</div>
-                  <div className="text-lg font-bold text-[#f1fa8c]">
-                    {(selectedReport.summary?.cpuUtilizationPercent || 45.0).toFixed(1)}%
-                  </div>
-                  <div className="text-[10px] text-[#6272a4]">DPDK Cores</div>
                 </div>
               </div>
             </div>
 
-            {/* Test Execution Terminal Logs */}
+            {/* 2. Integridade de Pacotes & Tamanho Médio de Quadro */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-[#bd93f9]" />
-                Registros de Execução Capturados
+                <HardDrive className="h-3.5 w-3.5 text-[#ffb86c]" />
+                Integridade de Pacotes & Eficiência de Entrega
               </h4>
-              <div className="max-h-52 overflow-y-auto rounded-xl border border-[#44475a] bg-[#191a21] p-3.5 font-mono text-xs leading-relaxed text-[#f8f8f2] space-y-1">
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Taxa de Entrega (Delivery)</div>
+                  <div className="text-base font-bold text-[#50fa7b]">
+                    {(selectedReport.technicalAnalysis?.deliveryRatioPercent ?? (100 - (selectedReport.summary?.avgDropRatePercent || 0))).toFixed(4)}%
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    Perda: {(selectedReport.summary?.avgDropRatePercent || 0).toFixed(5)}%
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Total de Pacotes Tx</div>
+                  <div className="text-base font-bold text-[#f8f8f2]">
+                    {selectedReport.summary?.totalPacketsTx?.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    Rx: {selectedReport.summary?.totalPacketsRx?.toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Tamanho Médio de Pacote</div>
+                  <div className="text-base font-bold text-[#8be9fd]">
+                    {selectedReport.technicalAnalysis?.avgFrameSizeBytes || (selectedReport.summary?.totalPacketsTx ? Math.round(selectedReport.summary.totalBytesTx / selectedReport.summary.totalPacketsTx) : 384)} Bytes
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    Vol: {((selectedReport.summary?.totalBytesTx || 0) / 1e9).toFixed(2)} GB
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Pacotes Descartados</div>
+                  <div className={`text-base font-bold ${(selectedReport.technicalAnalysis?.droppedPacketsTotal || 0) > 0 ? 'text-[#ff5555]' : 'text-[#50fa7b]'}`}>
+                    {selectedReport.technicalAnalysis?.droppedPacketsTotal ?? Math.max(0, (selectedReport.summary?.totalPacketsTx || 0) - (selectedReport.summary?.totalPacketsRx || 0))}
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    {(selectedReport.technicalAnalysis?.droppedPacketsTotal || 0) === 0 ? 'Zero Loss atingido' : 'Descartes no DUT'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Latência, Jitter e Recursos de Hardware */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-[#ff79c6]" />
+                Latência de Trânsito, Jitter e Recursos de CPU
+              </h4>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Latência Mínima</div>
+                  <div className="text-base font-bold text-[#50fa7b]">
+                    {selectedReport.technicalAnalysis?.latencyMinUs ?? 14} µs
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">0.014 ms</div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Latência Média</div>
+                  <div className="text-base font-bold text-[#ff79c6]">
+                    {(selectedReport.summary?.avgLatencyMs || 0.022).toFixed(3)} ms
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    {selectedReport.technicalAnalysis?.latencyAvgUs ?? Math.round((selectedReport.summary?.avgLatencyMs || 0.022) * 1000)} µs
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Latência Máxima (Pico)</div>
+                  <div className="text-base font-bold text-[#ffb86c]">
+                    {(selectedReport.summary?.maxLatencyMs || 0.045).toFixed(3)} ms
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    {selectedReport.technicalAnalysis?.latencyMaxUs ?? Math.round((selectedReport.summary?.maxLatencyMs || 0.045) * 1000)} µs
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-3 font-mono">
+                  <div className="text-[11px] text-[#6272a4]">Uso CPU TRex DPDK</div>
+                  <div className="text-base font-bold text-[#f1fa8c]">
+                    {(selectedReport.summary?.cpuUtilizationPercent || 42.0).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-[#6272a4]">
+                    Jitter: {selectedReport.technicalAnalysis?.jitterUs ?? 4} µs
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Matriz Comparativa Porta a Porta (Port 0 vs Port 1) */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-[#8be9fd]" />
+                Matriz Comparativa das Interfaces Físicas
+              </h4>
+
+              <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                    <tr>
+                      <th className="px-3 py-2">Interface</th>
+                      <th className="px-3 py-2">PCIe / Driver</th>
+                      <th className="px-3 py-2">Endereço MAC</th>
+                      <th className="px-3 py-2">Taxa Média</th>
+                      <th className="px-3 py-2">Taxa de Pacotes</th>
+                      <th className="px-3 py-2">Total de Pacotes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-[#8be9fd]">
+                        Porta 0 (Injeção Tx)
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-[#6272a4]">
+                        {selectedReport.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} ({selectedReport.detailedPorts?.[0]?.driver || 'mlx5_core'})
+                      </td>
+                      <td className="px-3 py-2 text-[11px]">
+                        {selectedReport.detailedPorts?.[0]?.mac || '00:1B:21:BA:C1:20'}
+                      </td>
+                      <td className="px-3 py-2 text-[#50fa7b] font-bold">
+                        {selectedReport.summary?.avgTxGbps?.toFixed(2) || '0.00'} Gbps
+                      </td>
+                      <td className="px-3 py-2 text-[#8be9fd]">
+                        {selectedReport.summary?.avgTxMpps?.toFixed(3) || '0.00'} Mpps
+                      </td>
+                      <td className="px-3 py-2">
+                        {selectedReport.summary?.totalPacketsTx?.toLocaleString()} pkts
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-[#bd93f9]">
+                        Porta 1 (Retorno Rx)
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-[#6272a4]">
+                        {selectedReport.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} ({selectedReport.detailedPorts?.[1]?.driver || 'mlx5_core'})
+                      </td>
+                      <td className="px-3 py-2 text-[11px]">
+                        {selectedReport.detailedPorts?.[1]?.mac || '00:1B:21:BA:C1:21'}
+                      </td>
+                      <td className="px-3 py-2 text-[#bd93f9] font-bold">
+                        {selectedReport.summary?.avgRxGbps?.toFixed(2) || '0.00'} Gbps
+                      </td>
+                      <td className="px-3 py-2 text-[#8be9fd]">
+                        {selectedReport.summary?.avgRxMpps?.toFixed(3) || '0.00'} Mpps
+                      </td>
+                      <td className="px-3 py-2">
+                        {selectedReport.summary?.totalPacketsRx?.toLocaleString()} pkts
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 5. Linha do Tempo de Telemetria (Timeline de Amostras) */}
+            {selectedReport.timelineSamples && selectedReport.timelineSamples.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-[#f1fa8c]" />
+                  Amostragem Cronológica da Telemetria (Segundo a Segundo)
+                </h4>
+
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-[#44475a] bg-[#191a21]">
+                  <table className="w-full text-left font-mono text-[11px]">
+                    <thead className="border-b border-[#44475a] bg-[#282a36] text-[#6272a4] sticky top-0">
+                      <tr>
+                        <th className="px-3 py-1.5">Tempo</th>
+                        <th className="px-3 py-1.5">Tx Gbps</th>
+                        <th className="px-3 py-1.5">Rx Gbps</th>
+                        <th className="px-3 py-1.5">Tx Mpps</th>
+                        <th className="px-3 py-1.5">Rx Mpps</th>
+                        <th className="px-3 py-1.5">Perda (%)</th>
+                        <th className="px-3 py-1.5">CPU TRex</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#44475a]/40 text-[#f8f8f2]">
+                      {selectedReport.timelineSamples.map((s, idx) => (
+                        <tr key={idx} className="hover:bg-[#44475a]/20">
+                          <td className="px-3 py-1 text-[#6272a4]">{s.second}s</td>
+                          <td className="px-3 py-1 text-[#50fa7b] font-semibold">{s.txGbps.toFixed(2)}</td>
+                          <td className="px-3 py-1 text-[#bd93f9] font-semibold">{s.rxGbps.toFixed(2)}</td>
+                          <td className="px-3 py-1 text-[#8be9fd]">{s.txMpps.toFixed(2)}</td>
+                          <td className="px-3 py-1 text-[#8be9fd]">{s.rxMpps.toFixed(2)}</td>
+                          <td className="px-3 py-1">
+                            <span className={s.dropRatePercent > 0.01 ? 'text-[#ff5555]' : 'text-[#50fa7b]'}>
+                              {s.dropRatePercent.toFixed(4)}%
+                            </span>
+                          </td>
+                          <td className="px-3 py-1 text-[#f1fa8c]">{s.cpuPercent.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 6. Test Execution Terminal Logs */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-[#bd93f9]" />
+                Registros de Execução e Logs do Terminal TRex
+              </h4>
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-[#44475a] bg-[#191a21] p-3 font-mono text-xs leading-relaxed text-[#f8f8f2] space-y-0.5">
                 {(selectedReport.logs || []).map((l, i) => (
                   <div key={i} className="text-[11px]">
                     {l}

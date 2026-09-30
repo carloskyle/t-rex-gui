@@ -78,6 +78,53 @@ export interface TRexStatus {
   metrics: TRexMetrics;
 }
 
+export interface TelemetrySample {
+  second: number;
+  txGbps: number;
+  rxGbps: number;
+  txMpps: number;
+  rxMpps: number;
+  dropRatePercent: number;
+  cpuPercent: number;
+  latencyMs: number;
+}
+
+export interface DetailedPortReport {
+  id: number;
+  name: string;
+  speed: string;
+  pciAddress?: string;
+  driver?: string;
+  mac?: string;
+  ip?: string;
+  totalTxPkts: number;
+  totalRxPkts: number;
+  totalTxBytes: number;
+  totalRxBytes: number;
+  avgTxGbps: number;
+  avgRxGbps: number;
+  avgTxMpps: number;
+  avgRxMpps: number;
+  errors: number;
+}
+
+export interface TechnicalAnalysis {
+  avgFrameSizeBytes: number;
+  l1LineRateTxGbps: number;
+  l1LineRateRxGbps: number;
+  l2FrameRateTxGbps: number;
+  l2FrameRateRxGbps: number;
+  l3PayloadTxGbps: number;
+  l3PayloadRxGbps: number;
+  deliveryRatioPercent: number;
+  droppedPacketsTotal: number;
+  latencyMinUs: number;
+  latencyAvgUs: number;
+  latencyMaxUs: number;
+  jitterUs: number;
+  bandwidthEfficiencyPercent: number;
+}
+
 export interface TestReport {
   id: string;
   timestamp: string;
@@ -108,6 +155,9 @@ export interface TestReport {
     avgLatencyMs: number;
     cpuUtilizationPercent: number;
   };
+  technicalAnalysis?: TechnicalAnalysis;
+  detailedPorts?: DetailedPortReport[];
+  timelineSamples?: TelemetrySample[];
   logs: string[];
 }
 

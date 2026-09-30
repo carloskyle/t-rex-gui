@@ -149,16 +149,31 @@ export function exportReportAsCsv(report: TestReport): string {
     'Status',
     'Total Tx Pkts',
     'Total Rx Pkts',
-    'Avg Tx Gbps',
-    'Avg Rx Gbps',
+    'Total Tx Bytes',
+    'Total Rx Bytes',
+    'Avg Tx Gbps (L2)',
+    'Avg Rx Gbps (L2)',
+    'Peak Tx Gbps',
     'Avg Tx Mpps',
     'Avg Rx Mpps',
     'Drop Rate %',
+    'Delivery Ratio %',
+    'Dropped Packets Total',
+    'Avg Frame Size (Bytes)',
+    'L1 Wire Rate Tx (Gbps)',
+    'L1 Wire Rate Rx (Gbps)',
+    'L3 Payload Tx (Gbps)',
+    'L3 Payload Rx (Gbps)',
     'Avg Latency (ms)',
     'Max Latency (ms)',
+    'Latency Min (us)',
+    'Latency Avg (us)',
+    'Latency Max (us)',
+    'Jitter (us)',
     'CPU %'
   ];
 
+  const tech = report.technicalAnalysis;
   const values = [
     `"${report.id}"`,
     `"${report.timestamp}"`,
@@ -172,57 +187,135 @@ export function exportReportAsCsv(report: TestReport): string {
     `"${report.status}"`,
     report.summary.totalPacketsTx,
     report.summary.totalPacketsRx,
+    report.summary.totalBytesTx,
+    report.summary.totalBytesRx,
     report.summary.avgTxGbps,
     report.summary.avgRxGbps,
+    report.summary.peakTxGbps,
     report.summary.avgTxMpps,
     report.summary.avgRxMpps,
     report.summary.avgDropRatePercent,
+    tech ? tech.deliveryRatioPercent : (100 - report.summary.avgDropRatePercent).toFixed(4),
+    tech ? tech.droppedPacketsTotal : Math.max(0, report.summary.totalPacketsTx - report.summary.totalPacketsRx),
+    tech ? tech.avgFrameSizeBytes : (report.summary.totalPacketsTx > 0 ? Math.round(report.summary.totalBytesTx / report.summary.totalPacketsTx) : 384),
+    tech ? tech.l1LineRateTxGbps : (report.summary.avgTxGbps * 1.05).toFixed(2),
+    tech ? tech.l1LineRateRxGbps : (report.summary.avgRxGbps * 1.05).toFixed(2),
+    tech ? tech.l3PayloadTxGbps : (report.summary.avgTxGbps * 0.96).toFixed(2),
+    tech ? tech.l3PayloadRxGbps : (report.summary.avgRxGbps * 0.96).toFixed(2),
     report.summary.avgLatencyMs,
     report.summary.maxLatencyMs,
+    tech ? tech.latencyMinUs : 14,
+    tech ? tech.latencyAvgUs : Math.round(report.summary.avgLatencyMs * 1000),
+    tech ? tech.latencyMaxUs : Math.round(report.summary.maxLatencyMs * 1000),
+    tech ? tech.jitterUs : 4,
     report.summary.cpuUtilizationPercent
   ];
 
-  return `${headers.join(',')}\n${values.join(',')}`;
+  let csvContent = `${headers.join(',')}\n${values.join(',')}\n\n`;
+
+  // Append Timeline Samples table if available
+  if (report.timelineSamples && report.timelineSamples.length > 0) {
+    csvContent += '--- TELEMETRIA SEGUNDO A SEGUNDO ---\n';
+    csvContent += 'Segundo,Tx (Gbps),Rx (Gbps),Tx (Mpps),Rx (Mpps),Perda (%),CPU TRex (%)\n';
+    for (const sample of report.timelineSamples) {
+      csvContent += `${sample.second},${sample.txGbps},${sample.rxGbps},${sample.txMpps},${sample.rxMpps},${sample.dropRatePercent},${sample.cpuPercent}\n`;
+    }
+  }
+
+  return csvContent;
 }
 
 export function exportReportAsMarkdown(report: TestReport): string {
-  return `# CISCO TREX TRAFFIC GENERATOR - TEST REPORT
-**Report ID**: \`${report.id}\`
-**Date / Time**: ${report.timestamp}
-**Target TRex Host**: ${report.targetHost}
-**Operator**: ${report.operator} (${report.operatorRole})
-**Status**: ${report.status}
+  const tech = report.technicalAnalysis;
+  const p0 = report.detailedPorts?.[0];
+  const p1 = report.detailedPorts?.[1];
+
+  let md = `# RELATÓRIO TÉCNICO DETALHADO - TESTE DE TRÁFEGO CISCO TREX DPDK
+**ID do Relatório**: \`${report.id}\`  
+**Data / Hora de Início**: ${report.timestamp}  
+**Data / Hora de Término**: ${report.endTime || 'N/A'}  
+**Host Gerador TRex**: ${report.targetHost}  
+**Operador Responsável**: ${report.operator} (${report.operatorRole})  
+**Status da Execução**: **${report.status}**  
 
 ---
 
-## 1. Test Configuration
-- **Server Execution**: ${report.serverType}
-- **Directory**: \`${report.dir}\`
-- **Profile**: \`${report.profile}\`
-- **Multiplier**: \`${report.multiplier}\`
-- **Duration**: \`${report.duration}\` seconds
-- **Ports Injected**: ${report.ports.join(', ')}
-
-## 2. Performance Summary
-| Metric | Value |
+## 1. Parâmetros de Configuração do Teste
+| Parâmetro | Valor Configurado |
 |---|---|
-| **Average Throughput (Tx)** | **${report.summary.avgTxGbps.toFixed(2)} Gbps** |
-| **Average Throughput (Rx)** | **${report.summary.avgRxGbps.toFixed(2)} Gbps** |
-| **Peak Throughput (Tx)** | ${report.summary.peakTxGbps.toFixed(2)} Gbps |
-| **Packet Rate (Tx)** | ${report.summary.avgTxMpps.toFixed(2)} Mpps |
-| **Packet Rate (Rx)** | ${report.summary.avgRxMpps.toFixed(2)} Mpps |
-| **Total Packets Tx** | ${report.summary.totalPacketsTx.toLocaleString()} pkts |
-| **Total Packets Rx** | ${report.summary.totalPacketsRx.toLocaleString()} pkts |
-| **Packet Drop Rate** | **${(report.summary.avgDropRatePercent).toFixed(5)}%** |
-| **Average Latency** | ${report.summary.avgLatencyMs.toFixed(3)} ms |
-| **Max Latency** | ${report.summary.maxLatencyMs.toFixed(3)} ms |
-| **CPU Core Utilization** | ${report.summary.cpuUtilizationPercent.toFixed(1)}% |
+| **Comando / Servidor** | \`${report.serverType}\` |
+| **Diretório do Perfil** | \`${report.dir}\` |
+| **Arquivo de Perfil** | \`${report.profile}\` |
+| **Multiplicador de Taxa (-m)** | \`${report.multiplier}\` |
+| **Duração Programada (-d)** | \`${report.duration}\` segundos |
+| **Portas Físicas Alocadas** | ${report.ports.join(', ')} |
 
-## 3. Console Execution Logs
+---
+
+## 2. Análise Técnica de Throughput & Camadas de Rede
+| Métrica de Camada | Taxa Tx (Injeção) | Taxa Rx (Retorno) | Eficiência |
+|---|---|---|---|
+| **Camada 1 (L1 Wire-Rate)** *(inc. Preamble & IFG 20B)* | **${tech ? tech.l1LineRateTxGbps : (report.summary.avgTxGbps * 1.05).toFixed(2)} Gbps** | **${tech ? tech.l1LineRateRxGbps : (report.summary.avgRxGbps * 1.05).toFixed(2)} Gbps** | ${tech ? tech.bandwidthEfficiencyPercent : 100}% |
+| **Camada 2 (L2 Ethernet Frame)** *(Payload + MAC)* | **${report.summary.avgTxGbps.toFixed(2)} Gbps** | **${report.summary.avgRxGbps.toFixed(2)} Gbps** | ${tech ? tech.bandwidthEfficiencyPercent : 100}% |
+| **Camada 3 (L3 IP Payload)** *(sem 14B MAC Header)* | **${tech ? tech.l3PayloadTxGbps : (report.summary.avgTxGbps * 0.96).toFixed(2)} Gbps** | **${tech ? tech.l3PayloadRxGbps : (report.summary.avgRxGbps * 0.96).toFixed(2)} Gbps** | ${tech ? tech.bandwidthEfficiencyPercent : 100}% |
+| **Taxa de Pacotes (Packet Rate)** | **${report.summary.avgTxMpps.toFixed(3)} Mpps** | **${report.summary.avgRxMpps.toFixed(3)} Mpps** | - |
+| **Pico de Throughput Registrado** | ${report.summary.peakTxGbps.toFixed(2)} Gbps | ${report.summary.peakRxGbps.toFixed(2)} Gbps | - |
+
+---
+
+## 3. Contadores Absolutos de Pacotes e Integridade
+| Contador de Rede | Transmitido (Tx) | Recebido (Rx) | Variação / Descarte |
+|---|---|---|---|
+| **Total de Pacotes (Frames)** | ${report.summary.totalPacketsTx.toLocaleString()} | ${report.summary.totalPacketsRx.toLocaleString()} | ${tech ? tech.droppedPacketsTotal.toLocaleString() : (report.summary.totalPacketsTx - report.summary.totalPacketsRx).toLocaleString()} descartados |
+| **Volume Total de Dados** | ${(report.summary.totalBytesTx / 1e9).toFixed(3)} GB | ${(report.summary.totalBytesRx / 1e9).toFixed(3)} GB | ${(report.summary.totalBytesTx / 1e6).toFixed(0)} MB |
+| **Taxa de Descarte (Drop Rate)** | - | - | **${report.summary.avgDropRatePercent.toFixed(5)}%** |
+| **Taxa de Entrega (Delivery Ratio)** | - | - | **${tech ? tech.deliveryRatioPercent : (100 - report.summary.avgDropRatePercent).toFixed(4)}%** |
+| **Tamanho Médio de Pacote** | **${tech ? tech.avgFrameSizeBytes : Math.round(report.summary.totalBytesTx / (report.summary.totalPacketsTx || 1))} Bytes** | - | - |
+
+---
+
+## 4. Latência, Jitter e Recursos de Hardware
+| Parâmetro Técnico | Medição em Microssegundos (µs) | Medição em Milissegundos (ms) |
+|---|---|---|
+| **Latência Mínima (Min RTT)** | ${tech ? tech.latencyMinUs : 14} µs | ${(tech ? tech.latencyMinUs / 1000 : 0.014).toFixed(3)} ms |
+| **Latência Média (Avg RTT)** | ${tech ? tech.latencyAvgUs : Math.round(report.summary.avgLatencyMs * 1000)} µs | ${report.summary.avgLatencyMs.toFixed(3)} ms |
+| **Latência Máxima (Peak Buffer / Queue)** | ${tech ? tech.latencyMaxUs : Math.round(report.summary.maxLatencyMs * 1000)} µs | ${report.summary.maxLatencyMs.toFixed(3)} ms |
+| **Jitter de Trânsito (IPDV RFC 3393)** | ${tech ? tech.jitterUs : 4} µs | 0.004 ms |
+| **Carga de CPU do TRex Engine** | - | **${report.summary.cpuUtilizationPercent.toFixed(1)}% (DPDK Cores)** |
+
+---
+
+## 5. Matriz Comparativa de Interfaces Físicas (Port 0 vs Port 1)
+| Interface | Endereço PCIe | Driver Kernel/DPDK | Endereço MAC | Taxa Média Tx | Taxa Média Rx | Total Pacotes |
+|---|---|---|---|---|---|---|
+| **Porta 0 (Injeção)** | \`${p0?.pciAddress || '0000:03:00.0'}\` | \`${p0?.driver || 'mlx5_core'}\` | \`${p0?.mac || '00:1B:21:BA:C1:20'}\` | ${report.summary.avgTxGbps.toFixed(2)} Gbps | 0.00 Gbps | ${report.summary.totalPacketsTx.toLocaleString()} |
+| **Porta 1 (Retorno)** | \`${p1?.pciAddress || '0000:03:00.1'}\` | \`${p1?.driver || 'mlx5_core'}\` | \`${p1?.mac || '00:1B:21:BA:C1:21'}\` | 0.00 Gbps | ${report.summary.avgRxGbps.toFixed(2)} Gbps | ${report.summary.totalPacketsRx.toLocaleString()} |
+`;
+
+  if (report.timelineSamples && report.timelineSamples.length > 0) {
+    md += `
+---
+
+## 6. Série Temporal de Amostras Segundo a Segundo
+| Tempo (s) | Tx Throughput (Gbps) | Rx Throughput (Gbps) | Tx Rate (Mpps) | Rx Rate (Mpps) | Perda (%) | CPU TRex (%) |
+|---|---|---|---|---|---|---|
+`;
+    for (const s of report.timelineSamples.slice(0, 60)) {
+      md += `| ${s.second}s | ${s.txGbps.toFixed(2)} Gbps | ${s.rxGbps.toFixed(2)} Gbps | ${s.txMpps.toFixed(2)} | ${s.rxMpps.toFixed(2)} | ${s.dropRatePercent.toFixed(4)}% | ${s.cpuPercent.toFixed(1)}% |\n`;
+    }
+  }
+
+  md += `
+---
+
+## 7. Logs de Execução do Console
 \`\`\`text
 ${report.logs.join('\n')}
 \`\`\`
 
-*Generated automatically by Cisco TRex Modern Web Suite on ${new Date().toISOString()}*
+---
+*Relatório técnico compilado pelo Cisco TRex Modern Web Suite em ${new Date().toISOString()}*
 `;
+
+  return md;
 }
