@@ -63,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <div>
             <label className="block text-xs font-medium text-[#f8f8f2] mb-1.5 flex items-center gap-1.5">
               <UserCheck className="h-3.5 w-3.5 text-[#8be9fd]" />
@@ -75,6 +75,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                autoComplete="off"
                 className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3.5 py-2.5 text-sm text-[#f8f8f2] placeholder-[#6272a4] focus:border-[#bd93f9] focus:outline-none focus:ring-1 focus:ring-[#bd93f9] font-mono"
                 placeholder="Digite seu usuário"
               />
@@ -92,6 +93,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="new-password"
                 className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3.5 py-2.5 text-sm text-[#f8f8f2] placeholder-[#6272a4] focus:border-[#bd93f9] focus:outline-none focus:ring-1 focus:ring-[#bd93f9] font-mono"
                 placeholder="Digite sua senha"
               />
