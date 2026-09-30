@@ -1,0 +1,11 @@
+# Cisco TRex SYN Flood Attack Profile (Firewall & IDS Testing)
+- duration : 1.0
+  generator :
+    distribution : "random"
+    clients_start : "10.0.0.1"
+    clients_end   : "10.255.255.254"
+    servers_start : "192.168.1.100"
+    servers_end   : "192.168.1.100"
+  cap_info :
+    - name: cap2/syn_flood.pcap
+      cps : 100000.0

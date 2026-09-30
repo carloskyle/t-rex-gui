@@ -1,0 +1,6 @@
+{
+  "name": "Cisco TRex Traffic Generator Web UI",
+  "description": "Enterprise Web Interface for Cisco TRex DPDK Traffic Generator with JWT Authentication, Profile Editor, Real-Time Stats, and Test Reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

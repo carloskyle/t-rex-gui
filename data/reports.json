@@ -1,0 +1,86 @@
+[
+  {
+    "id": "rep_trx_94821",
+    "timestamp": "2026-09-30T14:34:15.154Z",
+    "endTime": "2026-09-30T14:34:45.154Z",
+    "operator": "admin",
+    "operatorRole": "TRex Super Admin",
+    "serverType": "start_test (Server 1)",
+    "targetHost": "10.69.70.20",
+    "profile": "imix.yaml",
+    "dir": "stl",
+    "multiplier": "10gbps",
+    "duration": "30",
+    "ports": [
+      0,
+      1
+    ],
+    "status": "COMPLETED",
+    "summary": {
+      "totalPacketsTx": 44218900,
+      "totalPacketsRx": 44218820,
+      "totalBytesTx": 16843900000,
+      "totalBytesRx": 16843850000,
+      "avgTxGbps": 9.87,
+      "avgRxGbps": 9.86,
+      "peakTxGbps": 10.02,
+      "peakRxGbps": 9.99,
+      "avgTxMpps": 14.82,
+      "avgRxMpps": 14.81,
+      "avgDropRatePercent": 0.00018,
+      "maxLatencyMs": 0.042,
+      "avgLatencyMs": 0.018,
+      "cpuUtilizationPercent": 46.2
+    },
+    "logs": [
+      "[SERVER 1] Starting Cisco TRex Stateless Engine v3.08 on 10.69.70.20...",
+      "[DPDK] Initializing DPDK EAL with 8 cores, 2 100GbE Mellanox ConnectX-5 ports.",
+      "[TRAFFIC] Loading stream STL: stl/imix.yaml (multiplier: 10gbps, duration: 30s)",
+      "[START] Injected traffic onto Port 0 -> Port 1 at rate 9.87 Gbps (14.82 Mpps)",
+      "[SAMPLE @ 10s] Tx: 9.88 Gbps | Rx: 9.88 Gbps | Drops: 0 | CPU: 45%",
+      "[SAMPLE @ 20s] Tx: 9.86 Gbps | Rx: 9.86 Gbps | Drops: 80 | CPU: 47%",
+      "[FINISH] Test finished naturally after 30 seconds. All queues drained cleanly."
+    ]
+  },
+  {
+    "id": "rep_trx_83104",
+    "timestamp": "2026-09-30T13:19:15.154Z",
+    "endTime": "2026-09-30T13:20:15.154Z",
+    "operator": "netops",
+    "operatorRole": "Network Operations Engineer",
+    "serverType": "start_test2 (Server 2)",
+    "targetHost": "10.69.70.20",
+    "profile": "http_simple.py",
+    "dir": "astf",
+    "multiplier": "100000",
+    "duration": "60",
+    "ports": [
+      0,
+      1
+    ],
+    "status": "COMPLETED",
+    "summary": {
+      "totalPacketsTx": 89450000,
+      "totalPacketsRx": 89449100,
+      "totalBytesTx": 45200000000,
+      "totalBytesRx": 45199200000,
+      "avgTxGbps": 6.02,
+      "avgRxGbps": 6.01,
+      "peakTxGbps": 6.45,
+      "peakRxGbps": 6.42,
+      "avgTxMpps": 1.49,
+      "avgRxMpps": 1.49,
+      "avgDropRatePercent": 0.001,
+      "maxLatencyMs": 0.125,
+      "avgLatencyMs": 0.064,
+      "cpuUtilizationPercent": 58.4
+    },
+    "logs": [
+      "[SERVER 2] ASTF Stateful Cluster engine initialized.",
+      "[ASTF] Compiling python profile: astf/http_simple.py",
+      "[FLOW] Active TCP connections benchmark: 100,000 cps initiated.",
+      "[SAMPLE @ 30s] 100k TCP HTTP sessions established. Avg RTT: 0.06ms",
+      "[FINISH] Completed 60s ASTF run. TCP retransmissions: 0."
+    ]
+  }
+]

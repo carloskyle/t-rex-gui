@@ -1,0 +1,11 @@
+# Cisco TRex AVL High Throughput Multi-VLAN Enterprise Profile
+- duration : 60
+  generator :
+    distribution : "random"
+    clients_start : "192.168.10.1"
+    clients_end   : "192.168.10.254"
+    servers_start : "192.168.20.1"
+    servers_end   : "192.168.20.254"
+  cap_info :
+    - name: cap2/enterprise_data.pcap
+      cps : 25000.0

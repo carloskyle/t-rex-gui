@@ -1,0 +1,11 @@
+# Stateless DNS Queries Capture Replay
+- duration : 1.0
+  generator :
+    distribution : "seq"
+    clients_start : "172.16.1.1"
+    clients_end   : "172.16.1.254"
+    servers_start : "8.8.8.8"
+    servers_end   : "8.8.4.4"
+  cap_info :
+    - name: cap2/dns.pcap
+      cps : 5000.0
