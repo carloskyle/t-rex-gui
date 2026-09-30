@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { TRexStatus, ProfileItem } from '../types';
 import { ApiClient } from '../services/api';
-import { RealtimeMetricsChart, TelemetryDataPoint } from './RealtimeMetricsChart';
+import { ThroughputChart } from './ThroughputChart';
 
 interface DashboardTabProps {
   status: TRexStatus | null;
@@ -67,8 +67,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
-  // History for charts (supports up to 120 points for 30s/60s/120s real-time views)
-  const [chartHistory, setChartHistory] = useState<TelemetryDataPoint[]>([]);
+  // History for charts
+  const [chartHistory, setChartHistory] = useState<Array<{ time: number; txGbps: number; rxGbps: number }>>([]);
 
   // Load profiles for current directory
   useEffect(() => {
@@ -95,25 +95,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   useEffect(() => {
     if (!status) return;
     const now = Date.now();
-    const d = new Date(now);
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-    const newPoint: TelemetryDataPoint = {
+    const newPoint = {
       time: now,
-      timeStr,
-      txGbps: Number((status.metrics?.txGbps || 0).toFixed(2)),
-      rxGbps: Number((status.metrics?.rxGbps || 0).toFixed(2)),
-      txMpps: Number((status.metrics?.txMpps || 0).toFixed(3)),
-      rxMpps: Number((status.metrics?.rxMpps || 0).toFixed(3)),
-      txPps: status.metrics?.txPps || 0,
-      rxPps: status.metrics?.rxPps || 0,
-      dropRatePercent: status.metrics?.dropRatePercent || 0,
-      cpuPercent: status.metrics?.cpuUtilPercent || 0,
+      txGbps: status.metrics?.txGbps || 0,
+      rxGbps: status.metrics?.rxGbps || 0,
     };
 
     setChartHistory((prev) => {
       const updated = [...prev, newPoint];
-      if (updated.length > 120) {
-        return updated.slice(-120);
+      if (updated.length > 30) {
+        return updated.slice(-30);
       }
       return updated;
     });
@@ -528,10 +519,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
         {/* Right Column: Dynamic DPDK Charts & Physical Ports */}
         <div className="lg:col-span-6 space-y-6">
-          {/* Real-time Recharts Throughput & PPS Telemetry */}
-          <RealtimeMetricsChart
+          {/* Real-time Throughput Chart */}
+          <ThroughputChart
             history={chartHistory}
-            isRunning={status?.isRunning}
+            unit="Gbps"
+            peakGbps={getEffectiveMultiplier().includes('100g') ? 100 : 25}
           />
 
           {/* Port Status Cards */}
