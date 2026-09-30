@@ -10,9 +10,13 @@ import {
   Radio,
   FileText,
   AlertCircle,
+  Activity,
+  Terminal,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { ApiClient } from '../services/api';
-import { User, TRexStatus } from '../types';
+import { User, TRexStatus, DiagnosticsInfo } from '../types';
 
 interface SettingsTabProps {
   user: User;
@@ -25,6 +29,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ user, status, onRefres
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pingResult, setPingResult] = useState<string | null>(null);
+  const [diag, setDiag] = useState<DiagnosticsInfo | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  const handleRunDiagnostics = async () => {
+    setIsDiagnosing(true);
+    try {
+      const res = await ApiClient.getDiagnostics();
+      setDiag(res.diagnostics);
+      setFeedback('Diagnóstico de ambiente TRex executado com sucesso.');
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: any) {
+      setFeedback(`Erro no diagnóstico: ${err.message}`);
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
 
   useEffect(() => {
     if (status?.serverIp) {
@@ -121,6 +141,165 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ user, status, onRefres
           <div className="rounded-lg border border-[#8be9fd]/30 bg-[#8be9fd]/10 p-2.5 text-xs font-mono text-[#8be9fd] flex items-center gap-2">
             <Radio className="h-3.5 w-3.5" />
             <span>{pingResult}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Troubleshooting & System Diagnostics */}
+      <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-[#44475a] pb-3">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] flex items-center gap-1.5">
+              <Activity className="h-4 w-4 text-[#ff5555]" />
+              Diagnóstico de Ambiente TRex (Troubleshooting Passo a Passo)
+            </h3>
+            <p className="text-[11px] text-[#6272a4] mt-0.5">
+              Inspeciona em tempo real os processos, portas TCP, HugePages e permissões sudo do servidor Linux
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRunDiagnostics}
+            disabled={isDiagnosing}
+            className="flex items-center gap-1.5 rounded-lg bg-[#bd93f9] px-4 py-1.5 text-xs font-bold text-[#1e1f29] hover:brightness-110 active:scale-95 transition disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isDiagnosing ? 'animate-spin' : ''}`} />
+            <span>{isDiagnosing ? 'Inspecionando...' : 'Executar Diagnóstico'}</span>
+          </button>
+        </div>
+
+        {diag ? (
+          <div className="space-y-4 font-mono text-xs">
+            {/* Quick Status Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {/* Process Status */}
+              <div className={`p-3 rounded-lg border ${diag.isTrexRunning ? 'bg-[#50fa7b]/10 border-[#50fa7b]/40 text-[#50fa7b]' : 'bg-[#ff5555]/10 border-[#ff5555]/40 text-[#ff5555]'}`}>
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span>Daemon t-rex-64:</span>
+                  {diag.isTrexRunning ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                </div>
+                <div className="text-[10px] mt-1 text-[#f8f8f2]">
+                  {diag.isTrexRunning ? `Rodando (PID: ${diag.trexPids.join(', ')})` : 'PARADO (não ativo)'}
+                </div>
+              </div>
+
+              {/* Port 4501 Status */}
+              <div className={`p-3 rounded-lg border ${diag.isRpcPort4501Open ? 'bg-[#50fa7b]/10 border-[#50fa7b]/40 text-[#50fa7b]' : 'bg-[#ffb86c]/10 border-[#ffb86c]/40 text-[#ffb86c]'}`}>
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span>Porta 4501 (RPC ZMQ):</span>
+                  {diag.isRpcPort4501Open ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                </div>
+                <div className="text-[10px] mt-1 text-[#f8f8f2]">
+                  {diag.isRpcPort4501Open ? 'ABERTA (Pronta para conexões)' : 'FECHADA (Aguardando t-rex-64)'}
+                </div>
+              </div>
+
+              {/* Sudo Access */}
+              <div className={`p-3 rounded-lg border ${diag.hasSudoAccess ? 'bg-[#50fa7b]/10 border-[#50fa7b]/40 text-[#50fa7b]' : 'bg-[#ff5555]/10 border-[#ff5555]/40 text-[#ff5555]'}`}>
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span>Permissão Sudo:</span>
+                  {diag.hasSudoAccess ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                </div>
+                <div className="text-[10px] mt-1 text-[#f8f8f2]">
+                  {diag.hasSudoAccess ? 'NOPASSWD OK' : 'BLOQUEADO (Requer senha)'}
+                </div>
+              </div>
+
+              {/* HugePages */}
+              <div className="p-3 rounded-lg border bg-[#1e1f29] border-[#44475a] text-[#8be9fd]">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span>DPDK HugePages:</span>
+                  <Cpu className="h-4 w-4" />
+                </div>
+                <div className="text-[10px] mt-1 text-[#f8f8f2]">
+                  {diag.hugePages}
+                </div>
+              </div>
+            </div>
+
+            {/* Diagnostics Detailed Findings */}
+            <div className="rounded-lg border border-[#44475a] bg-[#1e1f29] p-3.5 space-y-2.5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#bd93f9]">
+                Verificação de Arquivos e Scripts do Host
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">Pasta /opt/trex/v3.08:</span>
+                    <span className={diag.trexDirExists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.trexDirExists ? 'Presente' : 'Não encontrada'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">Binário t-rex-64:</span>
+                    <span className={diag.trexBinaryExists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.trexBinaryExists ? 'Presente' : 'Ausente'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">Binário trex-console:</span>
+                    <span className={diag.consoleBinaryExists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.consoleBinaryExists ? 'Presente' : 'Ausente'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">Arquivo /etc/trex_cfg.yaml:</span>
+                    <span className={diag.cfgYamlExists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.cfgYamlExists ? 'Presente' : 'Ausente'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">start1_server.sh:</span>
+                    <span className={diag.start1Script.exists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.start1Script.exists ? (diag.start1Script.executable ? 'Executável OK' : 'Sem chmod +x') : 'Ausente'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">start2_server.sh:</span>
+                    <span className={diag.start2Script.exists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.start2Script.exists ? (diag.start2Script.executable ? 'Executável OK' : 'Sem chmod +x') : 'Ausente'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6272a4]">stop_server.sh:</span>
+                    <span className={diag.stopScript.exists ? 'text-[#50fa7b]' : 'text-[#ff5555]'}>
+                      {diag.stopScript.exists ? (diag.stopScript.executable ? 'Executável OK' : 'Sem chmod +x') : 'Ausente'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actionable Solution Recommendations */}
+              <div className="border-t border-[#44475a] pt-2.5 mt-2.5 text-[11px] space-y-1">
+                <span className="text-[#f1fa8c] font-bold block">Sugestões de Resolução:</span>
+                {!diag.hasSudoAccess && (
+                  <p className="text-[#ff5555]">
+                    • O usuário do Node não tem permissão sudo sem senha. Execute: <code className="bg-[#282a36] px-1 py-0.5 rounded text-[#f8f8f2]">echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/trex-web</code>
+                  </p>
+                )}
+                {!diag.isTrexRunning && (
+                  <p className="text-[#8be9fd]">
+                    • O t-rex-64 não estava em execução. Ele foi inicializado em segundo plano e a aplicação aguardará a porta 4501.
+                  </p>
+                )}
+                {diag.start1Script.exists && diag.start1Script.content && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[#bd93f9] hover:underline">Ver conteúdo de start1_server.sh</summary>
+                    <pre className="mt-1 p-2 bg-[#282a36] rounded text-[10px] text-[#f8f8f2] overflow-x-auto whitespace-pre-wrap">
+                      {diag.start1Script.content}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-lg border border-[#44475a] bg-[#1e1f29] text-center text-[#6272a4] text-xs">
+            Clique no botão <strong>"Executar Diagnóstico"</strong> acima para verificar a comunicação com o motor TRex, status do t-rex-64 e portas DPDK.
           </div>
         )}
       </div>

@@ -110,3 +110,22 @@ export interface TestReport {
   };
   logs: string[];
 }
+
+export interface DiagnosticsInfo {
+  timestamp: string;
+  isTrexRunning: boolean;
+  trexPids: string[];
+  isRpcPort4501Open: boolean;
+  hasSudoAccess: boolean;
+  sudoMessage: string;
+  trexDirExists: boolean;
+  trexBinaryExists: boolean;
+  consoleBinaryExists: boolean;
+  cfgYamlExists: boolean;
+  cfgYamlContent?: string;
+  start1Script: { exists: boolean; content?: string; executable: boolean };
+  start2Script: { exists: boolean; content?: string; executable: boolean };
+  stopScript: { exists: boolean; content?: string; executable: boolean };
+  hugePages: string;
+  detectedPorts: PortStats[];
+}

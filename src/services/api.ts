@@ -1,4 +1,4 @@
-import { AuthResponse, ProfileItem, TRexStatus, TestReport, User, PortStats } from '../types';
+import { AuthResponse, ProfileItem, TRexStatus, TestReport, User, PortStats, DiagnosticsInfo } from '../types';
 
 const TOKEN_KEY = 'cisco_trex_jwt_token';
 const USER_KEY = 'cisco_trex_user';
@@ -86,6 +86,16 @@ export class ApiClient {
     });
     if (!res.ok) {
       throw new Error('Falha ao re-escanear interfaces');
+    }
+    return res.json();
+  }
+
+  public static async getDiagnostics(): Promise<{ diagnostics: DiagnosticsInfo }> {
+    const res = await fetch('/api/trex/diagnostics', {
+      headers: ApiClient.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Falha ao obter diagnóstico do servidor');
     }
     return res.json();
   }

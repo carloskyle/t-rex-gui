@@ -142,6 +142,16 @@ app.get('/api/trex/interfaces', requireAuth, (req: AuthenticatedRequest, res: Re
   }
 });
 
+// Full Server DPDK & Process Diagnostics
+app.get('/api/trex/diagnostics', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const diag = await trexManager.runDiagnostics();
+    res.json({ diagnostics: diag });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/trex/interfaces', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const { ports } = req.body;

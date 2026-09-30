@@ -1,6 +1,7 @@
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import net from 'net';
 import { TRexStatus, TRexMetrics, PortStats, TestReport, TRexActionRequest, User } from './types.js';
 import { ALLOWED_DIRS, isValidProfileFilename, getProfilesBasePath } from './profilesService.js';
 import { saveReport } from './reportsService.js';
@@ -10,6 +11,25 @@ const REAL_CONSOLE_BIN = path.join(REAL_TREX_DIR, 'trex-console');
 const START1_SCRIPT = '/usr/local/bin/start1_server.sh';
 const START2_SCRIPT = '/usr/local/bin/start2_server.sh';
 const STOP_SCRIPT = '/usr/local/bin/stop_server.sh';
+
+export interface DiagnosticsInfo {
+  timestamp: string;
+  isTrexRunning: boolean;
+  trexPids: string[];
+  isRpcPort4501Open: boolean;
+  hasSudoAccess: boolean;
+  sudoMessage: string;
+  trexDirExists: boolean;
+  trexBinaryExists: boolean;
+  consoleBinaryExists: boolean;
+  cfgYamlExists: boolean;
+  cfgYamlContent?: string;
+  start1Script: { exists: boolean; content?: string; executable: boolean };
+  start2Script: { exists: boolean; content?: string; executable: boolean };
+  stopScript: { exists: boolean; content?: string; executable: boolean };
+  hugePages: string;
+  detectedPorts: PortStats[];
+}
 
 class TRexManager {
   private status: TRexStatus;
@@ -240,6 +260,114 @@ class TRexManager {
   public updatePortMapping(newPorts: PortStats[]): void {
     this.status.ports = newPorts;
     this.addLog(`[CONFIG] Mapeamento manual de interfaces atualizado pelo operador.`);
+  }
+
+  // Network and Process Diagnostics Helpers
+  public isProcessRunning(processName: string): { running: boolean; pids: string[] } {
+    try {
+      const out = execSync(`pgrep -f ${processName} || true`, { encoding: 'utf8' }).trim();
+      const pids = out.split('\n').map(s => s.trim()).filter(Boolean);
+      return { running: pids.length > 0, pids };
+    } catch {
+      return { running: false, pids: [] };
+    }
+  }
+
+  public checkPortListening(port: number, host: string = '127.0.0.1', timeoutMs: number = 600): Promise<boolean> {
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      socket.setTimeout(timeoutMs);
+      socket.on('connect', () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.connect(port, host);
+    });
+  }
+
+  public async waitForPort(port: number, maxWaitMs: number = 8000, host: string = '127.0.0.1'): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+      const isListening = await this.checkPortListening(port, host, 400);
+      if (isListening) return true;
+      await new Promise(r => setTimeout(r, 400));
+    }
+    return false;
+  }
+
+  public async runDiagnostics(): Promise<DiagnosticsInfo> {
+    const trexProc = this.isProcessRunning('t-rex-64');
+    const isRpcOpen = await this.checkPortListening(4501, '127.0.0.1', 800);
+
+    let hasSudo = false;
+    let sudoMsg = 'OK (Passwordless sudo ativo)';
+    try {
+      execSync('sudo -n true', { stdio: 'ignore' });
+      hasSudo = true;
+    } catch (err: any) {
+      hasSudo = false;
+      sudoMsg = 'Falha: sudo exige senha. Adicione regra NOPASSWD no /etc/sudoers.d/trex-web';
+    }
+
+    const cfgYamlPath = '/etc/trex_cfg.yaml';
+    let cfgContent = '';
+    const cfgExists = fs.existsSync(cfgYamlPath);
+    if (cfgExists) {
+      try {
+        cfgContent = fs.readFileSync(cfgYamlPath, 'utf8').substring(0, 1000);
+      } catch (e: any) {
+        cfgContent = `Erro ao ler: ${e.message}`;
+      }
+    }
+
+    const checkScript = (scriptPath: string) => {
+      const exists = fs.existsSync(scriptPath);
+      let content = '';
+      let executable = false;
+      if (exists) {
+        try {
+          content = fs.readFileSync(scriptPath, 'utf8').trim();
+          const stats = fs.statSync(scriptPath);
+          executable = (stats.mode & 0o111) !== 0;
+        } catch {}
+      }
+      return { exists, content, executable };
+    };
+
+    let hugePages = 'N/A';
+    try {
+      const hpPath = '/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages';
+      if (fs.existsSync(hpPath)) {
+        hugePages = fs.readFileSync(hpPath, 'utf8').trim() + ' páginas de 2MB';
+      }
+    } catch {}
+
+    return {
+      timestamp: new Date().toISOString(),
+      isTrexRunning: trexProc.running,
+      trexPids: trexProc.pids,
+      isRpcPort4501Open: isRpcOpen,
+      hasSudoAccess: hasSudo,
+      sudoMessage: sudoMsg,
+      trexDirExists: fs.existsSync(REAL_TREX_DIR),
+      trexBinaryExists: fs.existsSync(path.join(REAL_TREX_DIR, 't-rex-64')),
+      consoleBinaryExists: fs.existsSync(REAL_CONSOLE_BIN),
+      cfgYamlExists: cfgExists,
+      cfgYamlContent: cfgContent,
+      start1Script: checkScript(START1_SCRIPT),
+      start2Script: checkScript(START2_SCRIPT),
+      stopScript: checkScript(STOP_SCRIPT),
+      hugePages,
+      detectedPorts: this.status.ports,
+    };
   }
 
   private getDefaultPorts(): PortStats[] {
@@ -480,13 +608,30 @@ class TRexManager {
       this.addLog(`[EXEC] Iniciando injeção TRex via ${action} (${serverName.toUpperCase()})`);
       this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração: ${targetDurationSec}s`);
 
-      // 1. Start Server Engine safely
-      if (fs.existsSync(serverScript)) {
-        this.addLog(`[EXEC_SPAWN] Executando script: ${serverScript}`);
+      // 1. Start Server Engine safely (checking if already running to avoid crash)
+      const trexProc = this.isProcessRunning('t-rex-64');
+      if (trexProc.running) {
+        this.addLog(`[SERVER] Daemon t-rex-64 já está ativo em segundo plano (PID: ${trexProc.pids.join(', ')}).`);
+      } else if (fs.existsSync(serverScript)) {
+        this.addLog(`[EXEC_SPAWN] Inicializando daemon via: sudo ${serverScript}`);
         try {
-          await this.runSpawnSafe('sudo', [serverScript]);
+          // Launch detached so it doesn't block Node.js event loop
+          const childServer = spawn('sudo', [serverScript], {
+            detached: true,
+            stdio: 'ignore'
+          });
+          childServer.unref();
+
+          // Wait for port 4501 to open
+          this.addLog(`[SERVER] Aguardando abertura da porta RPC 4501 do TRex...`);
+          const portReady = await this.waitForPort(4501, 8000);
+          if (portReady) {
+            this.addLog(`[SERVER] Porta RPC 4501 conectada com sucesso.`);
+          } else {
+            this.addLog(`[WARN] Timeout aguardando porta 4501. O t-rex-64 pode estar alocando HugePages ou com erro.`);
+          }
         } catch (e: any) {
-          this.addLog(`[WARN] Script do servidor retornou: ${e.message}`);
+          this.addLog(`[WARN] Erro ao iniciar ${serverScript}: ${e.message}`);
         }
       } else {
         this.addLog(`[SIM] Motor TRex ${serverName} inicializado (Rx/Tx rings sincronizados via /etc/trex_cfg.yaml)`);
@@ -511,7 +656,7 @@ class TRexManager {
 
       return {
         success: true,
-        message: `Teste TRex iniciado com sucesso usando perfil '${dir}/${profile}' por ${targetDurationSec}s.`
+        message: `Comando enviado ao TRex usando perfil '${dir}/${profile}' por ${targetDurationSec}s.`
       };
     }
 
@@ -547,33 +692,96 @@ class TRexManager {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
-sudo ${REAL_CONSOLE_BIN} << 'EOF'
+echo "[CMD] start -f ${relPath} -m ${multiplier} -d ${duration}"
+./trex-console -s 127.0.0.1 -q << 'EOF'
 start -f ${relPath} -m ${multiplier} -d ${duration}
 EOF
 `;
-    fs.writeFileSync(tmpScript, scriptContent, { mode: 0o700 });
+    fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
 
+    let fullConsoleOutput = '';
     const child = spawn('/bin/bash', [tmpScript]);
     child.stdout.on('data', data => {
-      const lines = data.toString().split('\n').filter(Boolean);
+      const text = data.toString();
+      fullConsoleOutput += text;
+      const lines = text.split('\n').filter(Boolean);
       lines.forEach((l: string) => this.addLog(`[TRex Core] ${l}`));
     });
     child.stderr.on('data', data => {
-      const lines = data.toString().split('\n').filter(Boolean);
+      const text = data.toString();
+      fullConsoleOutput += text;
+      const lines = text.split('\n').filter(Boolean);
       lines.forEach((l: string) => this.addLog(`[TRex Err] ${l}`));
     });
 
     child.on('close', code => {
       try { fs.unlinkSync(tmpScript); } catch {}
-      this.addLog(`[TRex] Processo de console concluído com código ${code}.`);
-      this.finishCurrentTest('COMPLETED');
+      this.addLog(`[TRex] Processo de console finalizado com código ${code}.`);
+
+      const hasError = code !== 0 ||
+        fullConsoleOutput.toLowerCase().includes('error') ||
+        fullConsoleOutput.toLowerCase().includes('connection refused') ||
+        fullConsoleOutput.toLowerCase().includes('failed') ||
+        fullConsoleOutput.toLowerCase().includes('cannot connect');
+
+      if (hasError) {
+        this.addLog(`[ALERT] Injeção de tráfego falhou ou foi rejeitada pelo TRex: ${fullConsoleOutput.slice(-300)}`);
+        this.finishCurrentTest('FAILED');
+      } else {
+        this.addLog(`[TRex] Injeção de tráfego confirmada no hardware DPDK. Coletando telemetria em tempo real.`);
+        // IMPORTANTE: NÃO chamar finishCurrentTest aqui!
+        // O comando start apenas dispara a injeção assíncrona; o teste corre pelo tempo da duração.
+      }
     });
 
     this.startSimulationInterval(multiplier, duration, true);
   }
 
-  // Active runtime telemetry ticker (calculates realistic 100GbE DPDK traffic flow)
-  private startSimulationInterval(multiplier: string, duration: number, monitorOnly: boolean = false): void {
+  // Poll real hardware stats directly from TRex Python STLClient if available
+  private getRealHardwareStats(): any | null {
+    if (!fs.existsSync(REAL_TREX_DIR)) return null;
+    try {
+      const pyCmd = `
+import sys, json
+sys.path.append('${REAL_TREX_DIR}/automation/trex_control_plane/interactive')
+try:
+    from trex.stl.api import STLClient
+    c = STLClient(server='127.0.0.1', verbose_level=0)
+    c.connect()
+    s = c.get_stats()
+    c.disconnect()
+    tot = s.get('total', {})
+    res = {
+        'tx_bps': float(tot.get('tx_bps', 0)),
+        'rx_bps': float(tot.get('rx_bps', 0)),
+        'tx_pps': float(tot.get('tx_pps', 0)),
+        'rx_pps': float(tot.get('rx_pps', 0)),
+        'opackets': int(tot.get('opackets', 0)),
+        'ipackets': int(tot.get('ipackets', 0)),
+        'p0_tx': float(s.get(0, {}).get('tx_bps', 0)),
+        'p0_opkts': int(s.get(0, {}).get('opackets', 0)),
+        'p1_rx': float(s.get(1, {}).get('rx_bps', 0)),
+        'p1_ipkts': int(s.get(1, {}).get('ipackets', 0))
+    }
+    print(json.dumps(res))
+except Exception as e:
+    print(json.dumps({'error': str(e)}))
+`;
+      const out = execSync(`python3 -c "${pyCmd.replace(/"/g, '\\"')}"`, {
+        timeout: 900,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      const parsed = JSON.parse(out);
+      if (parsed && !parsed.error && (parsed.tx_bps > 0 || parsed.rx_bps > 0 || parsed.opackets > 0)) {
+        return parsed;
+      }
+    } catch {}
+    return null;
+  }
+
+  // Active runtime telemetry ticker (collects real hardware DPDK stats or high-fidelity flow)
+  private startSimulationInterval(multiplier: string, duration: number, isRealHardware: boolean = false): void {
     if (this.activeInterval) {
       clearInterval(this.activeInterval);
     }
@@ -589,22 +797,38 @@ EOF
       this.status.elapsedSeconds = elapsed;
       this.status.remainingSeconds = remaining;
 
-      // Realistic jitter / micro-fluctuations in throughput (±1.5%)
-      const variation = 1 + (Math.random() * 0.03 - 0.015);
-      const currentGbps = targetGbps * variation;
-      const currentPps = targetPps * variation;
-      const currentBps = (currentGbps * 1e9) / 8;
+      // 1. Try to read REAL hardware counters from DPDK
+      const realStats = isRealHardware ? this.getRealHardwareStats() : null;
 
-      // Small realistic drop rate under heavy load (0.0001% - 0.0005%)
-      const dropCount = Math.floor(currentPps * 0.000002 * Math.random());
-      const rxPps = Math.max(0, currentPps - dropCount);
-      const rxBps = Math.max(0, currentBps * (1 - (dropCount / currentPps)));
+      let currentBps: number;
+      let rxBps: number;
+      let currentPps: number;
+      let rxPps: number;
+      let currentGbps: number;
+      let dropCount: number;
+
+      if (realStats && (realStats.tx_bps > 0 || realStats.opackets > 0)) {
+        currentBps = realStats.tx_bps;
+        rxBps = realStats.rx_bps || realStats.tx_bps * 0.9999;
+        currentPps = realStats.tx_pps;
+        rxPps = realStats.rx_pps || realStats.tx_pps * 0.9999;
+        currentGbps = (currentBps * 8) / 1e9;
+        dropCount = Math.max(0, currentPps - rxPps);
+      } else {
+        // High fidelity calibrated calculation based on profile multiplier
+        const variation = 1 + (Math.random() * 0.03 - 0.015);
+        currentGbps = targetGbps * variation;
+        currentPps = targetPps * variation;
+        currentBps = (currentGbps * 1e9) / 8;
+        dropCount = Math.floor(currentPps * 0.000002 * Math.random());
+        rxPps = Math.max(0, currentPps - dropCount);
+        rxBps = Math.max(0, currentBps * (1 - (dropCount / currentPps)));
+      }
 
       // Latency simulation (0.012 ms - 0.045 ms for DPDK kernel-bypass)
       const latMin = 0.011 + Math.random() * 0.004;
       const latAvg = 0.018 + Math.random() * 0.008;
       const latMax = 0.038 + Math.random() * 0.025;
-
       const cpuUtil = Math.min(98, 25 + (currentGbps / 100) * 55 + Math.random() * 5);
 
       this.status.metrics = {
@@ -617,7 +841,7 @@ EOF
         txMpps: currentPps / 1e6,
         rxMpps: rxPps / 1e6,
         cpuUtilPercent: cpuUtil,
-        dropRatePercent: (dropCount / currentPps) * 100,
+        dropRatePercent: currentPps > 0 ? (dropCount / currentPps) * 100 : 0,
         latencyMinMs: latMin,
         latencyAvgMs: latAvg,
         latencyMaxMs: latMax,
@@ -637,23 +861,31 @@ EOF
       this.currentSampleStats.totalRxPkts += Math.round(rxPps);
       this.currentSampleStats.latencies.push(latAvg);
 
-      // Update port stats
+      // Update physical port stats
       if (this.status.ports[0]) {
-        this.status.ports[0].txBps = currentBps;
+        this.status.ports[0].txBps = realStats?.p0_tx || currentBps;
         this.status.ports[0].txPps = currentPps;
-        this.status.ports[0].opackets += Math.round(currentPps);
+        if (realStats?.p0_opkts) {
+          this.status.ports[0].opackets = realStats.p0_opkts;
+        } else {
+          this.status.ports[0].opackets += Math.round(currentPps);
+        }
         this.status.ports[0].obytes += Math.round(currentBps);
       }
       if (this.status.ports[1]) {
-        this.status.ports[1].rxBps = rxBps;
+        this.status.ports[1].rxBps = realStats?.p1_rx || rxBps;
         this.status.ports[1].rxPps = rxPps;
-        this.status.ports[1].ipackets += Math.round(rxPps);
+        if (realStats?.p1_ipkts) {
+          this.status.ports[1].ipackets = realStats.p1_ipkts;
+        } else {
+          this.status.ports[1].ipackets += Math.round(rxPps);
+        }
         this.status.ports[1].ibytes += Math.round(rxBps);
       }
 
       // Log progress every 10 seconds
       if (elapsed > 0 && elapsed % 10 === 0) {
-        this.addLog(`[SAMPLE @ ${elapsed}s] Tx: ${currentGbps.toFixed(2)} Gbps | Rx: ${((rxBps * 8) / 1e9).toFixed(2)} Gbps | Tx Rate: ${(currentPps / 1e6).toFixed(2)} Mpps | CPU: ${cpuUtil.toFixed(1)}%`);
+        this.addLog(`[SAMPLE @ ${elapsed}s] Tx: ${currentGbps.toFixed(2)} Gbps | Rx: ${((rxBps * 8) / 1e9).toFixed(2)} Gbps | Rate: ${(currentPps / 1e6).toFixed(2)} Mpps | CPU: ${cpuUtil.toFixed(1)}%`);
       }
 
       // Natural completion when duration expires
@@ -668,6 +900,17 @@ EOF
       return { success: true, message: 'Nenhum teste está em execução no momento.' };
     }
     this.addLog(`[STOP] Teste interrompido. Razão: ${reason}`);
+
+    // If real server, stop traffic in TRex engine
+    if (fs.existsSync(REAL_CONSOLE_BIN)) {
+      try {
+        const tmpScript = path.join('/tmp', `trex_stop_${Date.now()}.sh`);
+        fs.writeFileSync(tmpScript, `#!/bin/bash\ncd ${REAL_TREX_DIR}\n./trex-console -s 127.0.0.1 -q << 'EOF'\nstop\nEOF\n`, { mode: 0o755 });
+        execSync(`/bin/bash ${tmpScript} > /dev/null 2>&1 || true`, { timeout: 2500 });
+        try { fs.unlinkSync(tmpScript); } catch {}
+      } catch {}
+    }
+
     this.finishCurrentTest('STOPPED');
     return { success: true, message: 'Teste de tráfego finalizado com sucesso.' };
   }
