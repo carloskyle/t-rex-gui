@@ -609,33 +609,36 @@ class TRexManager {
       this.addLog(`[EXEC] Iniciando injeção TRex via ${action} (${serverName.toUpperCase()})`);
       this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração: ${targetDurationSec}s`);
 
-      // 1. Start Server Engine safely (checking if already running to avoid crash)
+      // 1. Verify if TRex RPC port 4501 is ACTUALLY listening
+      const isPort4501Open = await this.checkPortListening(4501, '127.0.0.1', 800);
       const trexProc = this.isProcessRunning('t-rex-64');
-      if (trexProc.running) {
-        this.addLog(`[SERVER] Daemon t-rex-64 já está ativo em segundo plano (PID: ${trexProc.pids.join(', ')}).`);
-      } else if (fs.existsSync(serverScript)) {
-        this.addLog(`[EXEC_SPAWN] Inicializando daemon via: sudo ${serverScript}`);
-        try {
-          // Launch detached so it doesn't block Node.js event loop
-          const childServer = spawn('sudo', [serverScript], {
-            detached: true,
-            stdio: 'ignore'
-          });
-          childServer.unref();
 
-          // Wait for port 4501 to open
-          this.addLog(`[SERVER] Aguardando abertura da porta RPC 4501 do TRex...`);
-          const portReady = await this.waitForPort(4501, 8000);
-          if (portReady) {
-            this.addLog(`[SERVER] Porta RPC 4501 conectada com sucesso.`);
-          } else {
-            this.addLog(`[WARN] Timeout aguardando porta 4501. O t-rex-64 pode estar alocando HugePages ou com erro.`);
-          }
-        } catch (e: any) {
-          this.addLog(`[WARN] Erro ao iniciar ${serverScript}: ${e.message}`);
-        }
+      if (isPort4501Open) {
+        this.addLog(`[SERVER] Daemon t-rex-64 ativo e respondendo na porta RPC 4501 (PIDs: ${trexProc.pids.join(', ') || 'N/A'}).`);
       } else {
-        this.addLog(`[SIM] Motor TRex ${serverName} inicializado (Rx/Tx rings sincronizados via /etc/trex_cfg.yaml)`);
+        this.addLog(`[SERVER] Porta RPC 4501 está FECHADA (t-rex-64 não está aceitando conexões).`);
+        if (fs.existsSync(serverScript)) {
+          this.addLog(`[EXEC_SPAWN] Tentando iniciar daemon via: sudo ${serverScript}...`);
+          try {
+            const childServer = spawn('sudo', [serverScript], {
+              detached: true,
+              stdio: 'ignore'
+            });
+            childServer.unref();
+
+            this.addLog(`[SERVER] Aguardando abertura da porta RPC 4501 do TRex (até 8s)...`);
+            const portReady = await this.waitForPort(4501, 8000, '127.0.0.1');
+            if (portReady) {
+              this.addLog(`[SERVER] Porta RPC 4501 conectada com sucesso.`);
+            } else {
+              this.addLog(`[ALERT] Timeout: Porta 4501 não abriu. Verifique se 'sudo ${serverScript}' requer senha no /etc/sudoers ou se o t-rex-64 falhou.`);
+            }
+          } catch (e: any) {
+            this.addLog(`[WARN] Erro ao iniciar ${serverScript}: ${e.message}`);
+          }
+        } else {
+          this.addLog(`[WARN] Script ${serverScript} não encontrado. Inicie o TRex manualmente via 'sudo ./t-rex-64 -i' na pasta /opt/trex/v3.08.`);
+        }
       }
 
       // 2. Start Traffic via Console or Simulation (sem forçar portas ou cores específicos)
@@ -692,9 +695,10 @@ class TRexManager {
   private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
     const durationArg = duration > 0 ? ` -d ${duration}` : '';
+    // Use -s 127.0.0.1 to avoid IPv6 localhost resolution mismatch
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
-./trex-console << 'EOF'
+./trex-console -s 127.0.0.1 << 'EOF'
 start -f ${relPath} -m ${multiplier}${durationArg}
 EOF
 `;
@@ -725,10 +729,13 @@ EOF
         lower.includes('cannot connect') ||
         lower.includes('socket error') ||
         lower.includes('server is not responding') ||
+        lower.includes('failed to get server response') ||
+        lower.includes('failed to connect') ||
+        fullConsoleOutput.includes('*** [RPC]') ||
         fullConsoleOutput.includes('*** [FAILED] ***');
 
       if (hasFatalError) {
-        this.addLog(`[ALERT] Falha ao injetar tráfego no TRex: ${fullConsoleOutput.slice(-300)}`);
+        this.addLog(`[ALERT] Falha de comunicação com o daemon TRex (porta 4501): ${fullConsoleOutput.slice(-300)}`);
         this.finishCurrentTest('FAILED');
       } else {
         this.addLog(`[TRex] Injeção de tráfego enviada com sucesso por ${duration}s.`);
@@ -751,7 +758,7 @@ EOF
 sys.path.append('${REAL_TREX_DIR}/automation/trex_control_plane/interactive')
 try:
     from trex.stl.api import STLClient
-    c = STLClient(server='127.0.0.1', verbose_level=0)
+    c = STLClient(server='127.0.0.1', verbose_level='none')
     c.connect()
     while True:
         s = c.get_stats()
