@@ -200,7 +200,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs text-[#6272a4]">Gbps</span>
           </div>
           <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
-            {(status?.metrics.txBps ? status.metrics.txBps / 1e6 : 0).toFixed(0)} MB/s
+            {(status?.metrics.txBps ? (status.metrics.txBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs text-[#6272a4]">Gbps</span>
           </div>
           <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
-            {(status?.metrics.rxBps ? status.metrics.rxBps / 1e6 : 0).toFixed(0)} MB/s
+            {(status?.metrics.rxBps ? (status.metrics.rxBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
@@ -590,14 +590,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   <div className="flex justify-between text-[#6272a4]">
                     <span>Tx Rate:</span>
                     <span className="text-[#50fa7b] font-semibold">
-                      {(port.txBps ? (port.txBps * 8) / 1e9 : 0).toFixed(2)} Gbps
+                      {(port.txBps ? port.txBps / 1e9 : 0).toFixed(2)} Gbps
                     </span>
                   </div>
 
                   <div className="flex justify-between text-[#6272a4]">
                     <span>Rx Rate:</span>
                     <span className="text-[#bd93f9] font-semibold">
-                      {(port.rxBps ? (port.rxBps * 8) / 1e9 : 0).toFixed(2)} Gbps
+                      {(port.rxBps ? port.rxBps / 1e9 : 0).toFixed(2)} Gbps
                     </span>
                   </div>
 

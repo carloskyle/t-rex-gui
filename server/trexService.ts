@@ -224,8 +224,8 @@ class TRexManager {
 
   // Inspect specific PCI address helper
   private inspectPciDevice(pciAddress: string): { model: string; speed: string; driver: string; mac?: string } {
-    let model = 'Adaptador de Rede DPDK';
-    let speed = '100 Gbps';
+    let model = 'Adaptador 10GbE DPDK';
+    let speed = '10 Gbps';
     let driver = 'vfio-pci';
 
     const pciSysPath = path.join('/sys/bus/pci/devices', pciAddress.includes(':') ? pciAddress : `0000:${pciAddress}`);
@@ -233,16 +233,16 @@ class TRexManager {
       try {
         const vendor = fs.readFileSync(path.join(pciSysPath, 'vendor'), 'utf8').trim().toLowerCase();
         if (vendor.includes('0x15b3')) {
-          model = 'Mellanox ConnectX-5/6';
-          speed = '100 Gbps';
+          model = 'Mellanox ConnectX';
+          speed = '10 Gbps';
           driver = 'mlx5_core';
         } else if (vendor.includes('0x8086')) {
-          model = 'Intel E810/XL710 DPDK';
-          speed = '100 Gbps';
-          driver = 'vfio-pci / igb_uio';
+          model = 'Intel 10GbE DPDK';
+          speed = '10 Gbps';
+          driver = 'vfio-pci / ixgbe';
         } else if (vendor.includes('0x14e4')) {
-          model = 'Broadcom NetXtreme-E';
-          speed = '25/100 Gbps';
+          model = 'Broadcom NetXtreme';
+          speed = '10 Gbps';
           driver = 'bnxt_en';
         }
       } catch {}
@@ -376,9 +376,9 @@ class TRexManager {
       {
         id: 0,
         name: 'DPDK Interface 0 (Tx/Rx)',
-        speed: '100 Gbps',
+        speed: '10 Gbps',
         status: 'UP',
-        model: 'Detectado dinamicamente via /etc/trex_cfg.yaml',
+        model: 'Adaptador 10GbE DPDK',
         driver: 'vfio-pci / mlx5_core',
         pciAddress: '0000:03:00.0',
         ip: '16.0.0.1',
@@ -397,9 +397,9 @@ class TRexManager {
       {
         id: 1,
         name: 'DPDK Interface 1 (Rx/Tx)',
-        speed: '100 Gbps',
+        speed: '10 Gbps',
         status: 'UP',
-        model: 'Detectado dinamicamente via /etc/trex_cfg.yaml',
+        model: 'Adaptador 10GbE DPDK',
         driver: 'vfio-pci / mlx5_core',
         pciAddress: '0000:03:00.1',
         ip: '48.0.0.1',
@@ -813,6 +813,33 @@ while True:
         if rx_bps == 0 and (p0_rx > 0 or p1_rx > 0):
             rx_bps = p0_rx + p1_rx
 
+        ports_meta = {}
+        for p in ports:
+            try:
+                p_info = client.get_port_info(p)
+                p_spd = p_info.get('speed', 0)
+                if p_spd in (10, 10000):
+                    spd_str = '10 Gbps'
+                elif p_spd in (1, 1000):
+                    spd_str = '1 Gbps'
+                elif p_spd in (25, 25000):
+                    spd_str = '25 Gbps'
+                elif p_spd in (40, 40000):
+                    spd_str = '40 Gbps'
+                elif p_spd in (100, 100000):
+                    spd_str = '100 Gbps'
+                elif p_spd > 0:
+                    spd_str = f"{p_spd} Gbps"
+                else:
+                    spd_str = '10 Gbps'
+                ports_meta[str(p)] = {
+                    'speed': spd_str,
+                    'driver': p_info.get('driver', ''),
+                    'hw_mac': p_info.get('hw_mac', '')
+                }
+            except Exception:
+                pass
+
         res = {
             'tx_bps': tx_bps,
             'rx_bps': rx_bps,
@@ -828,7 +855,8 @@ while True:
             'p1_rx_bps': p1_rx,
             'p1_opkts': int(p1.get('opackets', 0)),
             'p1_ipkts': int(p1.get('ipackets', 0)),
-            'cpu_util': float(glob.get('cpu_util', 0))
+            'cpu_util': float(glob.get('cpu_util', 0)),
+            'ports_meta': ports_meta
         }
         print(json.dumps(res), flush=True)
     except Exception as loop_err:
@@ -941,7 +969,20 @@ while True:
     this.currentSampleStats.totalTxPkts += Math.round(txPps);
     this.currentSampleStats.totalRxPkts += Math.round(rxPps);
 
-    // Update real physical port counters
+    // Update real physical port counters and metadata from TRex
+    if (data.ports_meta) {
+      if (data.ports_meta['0'] && this.status.ports[0]) {
+        if (data.ports_meta['0'].speed) this.status.ports[0].speed = data.ports_meta['0'].speed;
+        if (data.ports_meta['0'].hw_mac) this.status.ports[0].mac = data.ports_meta['0'].hw_mac;
+        if (data.ports_meta['0'].driver) this.status.ports[0].driver = data.ports_meta['0'].driver;
+      }
+      if (data.ports_meta['1'] && this.status.ports[1]) {
+        if (data.ports_meta['1'].speed) this.status.ports[1].speed = data.ports_meta['1'].speed;
+        if (data.ports_meta['1'].hw_mac) this.status.ports[1].mac = data.ports_meta['1'].hw_mac;
+        if (data.ports_meta['1'].driver) this.status.ports[1].driver = data.ports_meta['1'].driver;
+      }
+    }
+
     if (this.status.ports[0]) {
       this.status.ports[0].txBps = data.p0_tx_bps || txBps;
       this.status.ports[0].rxBps = data.p0_rx_bps || 0;
