@@ -691,10 +691,11 @@ class TRexManager {
 
   private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
+    const durationArg = duration > 0 ? ` -d ${duration}` : '';
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
-./trex-console -s 127.0.0.1 -q << 'EOF'
-start -f ${relPath} -m ${multiplier} -d ${duration} --force
+./trex-console << 'EOF'
+start -f ${relPath} -m ${multiplier}${durationArg}
 EOF
 `;
     fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
@@ -724,14 +725,13 @@ EOF
         lower.includes('cannot connect') ||
         lower.includes('socket error') ||
         lower.includes('server is not responding') ||
-        lower.includes('unrecognized arguments') ||
         fullConsoleOutput.includes('*** [FAILED] ***');
 
       if (hasFatalError) {
         this.addLog(`[ALERT] Falha ao injetar tráfego no TRex: ${fullConsoleOutput.slice(-300)}`);
         this.finishCurrentTest('FAILED');
       } else {
-        this.addLog(`[TRex] Injeção de tráfego iniciada no hardware DPDK por ${duration}s.`);
+        this.addLog(`[TRex] Injeção de tráfego enviada com sucesso por ${duration}s.`);
       }
     });
 
@@ -800,6 +800,13 @@ except Exception as e:
           }
           this.updateMetricsFromHardware(data, duration);
         } catch {}
+      }
+    });
+
+    this.realMonitorChild.stderr.on('data', (errChunk: Buffer) => {
+      const errStr = errChunk.toString().trim();
+      if (errStr) {
+        this.addLog(`[TRex Telemetry Err] ${errStr}`);
       }
     });
 
@@ -991,11 +998,11 @@ except Exception as e:
       this.realMonitorChild = null;
     }
 
-    // Send stop -a and reset to physical TRex console if binary exists
+    // Send stop to physical TRex console if binary exists
     if (fs.existsSync(REAL_CONSOLE_BIN)) {
       try {
         const tmpScript = path.join('/tmp', `trex_stop_${Date.now()}.sh`);
-        fs.writeFileSync(tmpScript, `#!/bin/bash\ncd ${REAL_TREX_DIR}\n./trex-console -s 127.0.0.1 -q << 'EOF'\nstop -a\nreset\nEOF\n`, { mode: 0o755 });
+        fs.writeFileSync(tmpScript, `#!/bin/bash\ncd ${REAL_TREX_DIR}\n./trex-console << 'EOF'\nstop\nEOF\n`, { mode: 0o755 });
         const sub = spawn('/bin/bash', [tmpScript], { stdio: 'ignore' });
         sub.unref();
       } catch {}
