@@ -784,7 +784,15 @@ while True:
                     time.sleep(1)
                     continue
 
-        s = client.get_stats()
+        ports = []
+        try:
+            ports = client.get_all_ports()
+        except Exception:
+            pass
+        if not ports:
+            ports = [0, 1]
+
+        s = client.get_stats(ports=ports)
         tot = s.get('total', {})
         p0 = s.get(0, {})
         p1 = s.get(1, {})
