@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Key, UserCheck, Lock, Activity, Server, ArrowRight, AlertCircle } from 'lucide-react';
+import { Key, UserCheck, Lock, Activity, Server, ArrowRight, AlertCircle } from 'lucide-react';
 import { ApiClient } from '../services/api';
 import { User } from '../types';
 
@@ -8,8 +8,8 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('trex@2026');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -28,12 +28,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickSelect = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMessage(null);
   };
 
   return (
@@ -82,7 +76,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3.5 py-2.5 text-sm text-[#f8f8f2] placeholder-[#6272a4] focus:border-[#bd93f9] focus:outline-none focus:ring-1 focus:ring-[#bd93f9] font-mono"
-                placeholder="Ex: admin, netops"
+                placeholder="Digite seu usuário"
               />
             </div>
           </div>
@@ -99,7 +93,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3.5 py-2.5 text-sm text-[#f8f8f2] placeholder-[#6272a4] focus:border-[#bd93f9] focus:outline-none focus:ring-1 focus:ring-[#bd93f9] font-mono"
-                placeholder="••••••••••••"
+                placeholder="Digite sua senha"
               />
             </div>
           </div>
@@ -121,41 +115,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
           </button>
         </form>
 
-        {/* Quick select presets */}
-        <div className="mt-6 border-t border-[#44475a] pt-4">
-          <p className="text-xs font-medium text-[#6272a4] mb-2 flex items-center gap-1">
-            <Shield className="h-3 w-3 text-[#50fa7b]" />
-            Perfis de Acesso Rápido (Ambiente de Rede):
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('admin', 'trex@2026')}
-              className="text-left rounded-md border border-[#44475a] bg-[#1e1f29] p-2 hover:border-[#bd93f9] hover:bg-[#44475a]/50 transition cursor-pointer"
-            >
-              <div className="text-[11px] font-semibold text-[#bd93f9]">admin</div>
-              <div className="text-[9px] text-[#6272a4]">Super Admin</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('netops', 'cisco123!')}
-              className="text-left rounded-md border border-[#44475a] bg-[#1e1f29] p-2 hover:border-[#50fa7b] hover:bg-[#44475a]/50 transition cursor-pointer"
-            >
-              <div className="text-[11px] font-semibold text-[#50fa7b]">netops</div>
-              <div className="text-[9px] text-[#6272a4]">Operador</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('auditor', 'auditor123')}
-              className="text-left rounded-md border border-[#44475a] bg-[#1e1f29] p-2 hover:border-[#8be9fd] hover:bg-[#44475a]/50 transition cursor-pointer"
-            >
-              <div className="text-[11px] font-semibold text-[#8be9fd]">auditor</div>
-              <div className="text-[9px] text-[#6272a4]">Auditor QA</div>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center border-t border-[#44475a] pt-4">
           <p className="text-[10px] text-[#6272a4]">
             Tokens JWT assinados com HMAC-SHA256 • Execução protegida via child_process.spawn
           </p>
