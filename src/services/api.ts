@@ -233,4 +233,54 @@ export class ApiClient {
     }
     return res.json();
   }
+
+  /* User Management API */
+  public static async getUsers(): Promise<User[]> {
+    const res = await fetch('/api/users', {
+      headers: ApiClient.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao buscar usuários' }));
+      throw new Error(err.error || 'Falha ao listar usuários');
+    }
+    const data = await res.json();
+    return data.users;
+  }
+
+  public static async createUser(user: { username: string; name: string; email: string; role: 'admin' | 'network_operator' | 'auditor'; password: string }): Promise<User> {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: ApiClient.getHeaders(),
+      body: JSON.stringify(user),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao criar usuário' }));
+      throw new Error(err.error || 'Falha ao criar usuário');
+    }
+    const data = await res.json();
+    return data.user;
+  }
+
+  public static async updateUserPassword(id: string, password: string): Promise<void> {
+    const res = await fetch(`/api/users/${id}/password`, {
+      method: 'PUT',
+      headers: ApiClient.getHeaders(),
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao atualizar senha' }));
+      throw new Error(err.error || 'Falha ao atualizar senha');
+    }
+  }
+
+  public static async deleteUser(id: string): Promise<void> {
+    const res = await fetch(`/api/users/${id}`, {
+      method: 'DELETE',
+      headers: ApiClient.getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao excluir usuário' }));
+      throw new Error(err.error || 'Falha ao excluir usuário');
+    }
+  }
 }

@@ -14,6 +14,12 @@ import {
   Terminal,
   RefreshCw,
   XCircle,
+  Users,
+  UserPlus,
+  KeyRound,
+  Trash2,
+  Lock,
+  Plus
 } from 'lucide-react';
 import { ApiClient } from '../services/api';
 import { User, TRexStatus, DiagnosticsInfo } from '../types';
@@ -31,6 +37,90 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ user, status, onRefres
   const [pingResult, setPingResult] = useState<string | null>(null);
   const [diag, setDiag] = useState<DiagnosticsInfo | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  // User Management States
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [newUserForm, setNewUserForm] = useState({
+    username: '',
+    name: '',
+    email: '',
+    role: 'network_operator' as 'admin' | 'network_operator' | 'auditor',
+    password: ''
+  });
+
+  const fetchUsers = async () => {
+    if (user.role !== 'admin') return;
+    setIsLoadingUsers(true);
+    try {
+      const data = await ApiClient.getUsers();
+      setUsersList(data);
+    } catch (err) {
+      console.error('Failed to load users', err);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [user.role]);
+
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserForm.username || !newUserForm.password) return;
+    try {
+      await ApiClient.createUser(newUserForm);
+      setFeedback(`Usuário '${newUserForm.username}' criado com sucesso.`);
+      setShowCreateModal(false);
+      setNewUserForm({
+        username: '',
+        name: '',
+        email: '',
+        role: 'network_operator',
+        password: ''
+      });
+      fetchUsers();
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      alert(`Erro ao criar usuário: ${err.message}`);
+    }
+  };
+
+  const handleUpdatePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForPassword || !newPassword) return;
+    try {
+      await ApiClient.updateUserPassword(selectedUserForPassword.id, newPassword);
+      setFeedback(`Senha do usuário '${selectedUserForPassword.username}' atualizada com sucesso.`);
+      setShowPasswordModal(false);
+      setSelectedUserForPassword(null);
+      setNewPassword('');
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      alert(`Erro ao atualizar senha: ${err.message}`);
+    }
+  };
+
+  const handleDeleteUser = async (u: User) => {
+    if (u.id === user.id) {
+      alert('Você não pode excluir seu próprio usuário.');
+      return;
+    }
+    if (!window.confirm(`Deseja realmente excluir o usuário '${u.username}'?`)) return;
+    try {
+      await ApiClient.deleteUser(u.id);
+      setFeedback(`Usuário '${u.username}' removido.`);
+      fetchUsers();
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      alert(`Erro ao excluir: ${err.message}`);
+    }
+  };
 
   const handleRunDiagnostics = async () => {
     setIsDiagnosing(true);
@@ -332,6 +422,110 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ user, status, onRefres
         </div>
       </div>
 
+      {/* User Management Section (Admin Only) */}
+      <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-[#44475a] pb-3">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-[#bd93f9]" />
+              Gerenciamento de Usuários e Senhas
+            </h3>
+            <p className="text-[11px] text-[#6272a4] mt-0.5">
+              Crie novas contas para operadores e altere senhas de acesso da plataforma
+            </p>
+          </div>
+
+          {user.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-[#50fa7b] px-3 py-1.5 text-xs font-bold text-[#1e1f29] hover:bg-[#50fa7b]/90 transition cursor-pointer shadow-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Novo Usuário</span>
+            </button>
+          )}
+        </div>
+
+        {user.role !== 'admin' ? (
+          <div className="p-3 rounded-lg bg-[#1e1f29] text-xs text-[#6272a4]">
+            Apenas usuários com privilégios de <strong>admin</strong> podem gerenciar outras contas e alterar senhas.
+          </div>
+        ) : isLoadingUsers ? (
+          <div className="p-4 text-center text-xs text-[#6272a4]">Carregando usuários...</div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+            <table className="w-full text-left font-mono text-xs">
+              <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                <tr>
+                  <th className="px-3 py-2">Usuário</th>
+                  <th className="px-3 py-2">Nome Completo</th>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Nível (Role)</th>
+                  <th className="px-3 py-2 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
+                {usersList.map((u) => (
+                  <tr key={u.id} className="hover:bg-[#44475a]/20">
+                    <td className="px-3 py-2.5 font-bold text-[#8be9fd]">
+                      {u.username}
+                      {u.id === user.id && (
+                        <span className="ml-1.5 text-[9px] bg-[#50fa7b]/20 text-[#50fa7b] px-1.5 py-0.5 rounded">
+                          Você
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">{u.name}</td>
+                    <td className="px-3 py-2.5 text-[#6272a4]">{u.email}</td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                          u.role === 'admin'
+                            ? 'bg-[#ff79c6]/20 text-[#ff79c6]'
+                            : u.role === 'network_operator'
+                            ? 'bg-[#50fa7b]/20 text-[#50fa7b]'
+                            : 'bg-[#f1fa8c]/20 text-[#f1fa8c]'
+                        }`}
+                      >
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserForPassword(u);
+                            setShowPasswordModal(true);
+                          }}
+                          className="flex items-center gap-1 rounded bg-[#282a36] border border-[#44475a] px-2 py-1 text-[11px] text-[#bd93f9] hover:text-[#f8f8f2] transition cursor-pointer"
+                          title="Alterar senha do usuário"
+                        >
+                          <KeyRound className="h-3 w-3" />
+                          <span>Alterar Senha</span>
+                        </button>
+
+                        {u.username !== 'admin' && u.id !== user.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u)}
+                            className="rounded p-1 text-[#6272a4] hover:bg-[#ff5555]/20 hover:text-[#ff5555] transition cursor-pointer"
+                            title="Excluir usuário"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Hardware Network Interfaces Card */}
       <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-5 shadow-sm space-y-3">
         <div className="flex items-center justify-between border-b border-[#44475a] pb-3">
@@ -419,6 +613,169 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ user, status, onRefres
           </div>
         </div>
       </div>
+
+      {/* Modal: Criar Novo Usuário */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#44475a] bg-[#282a36] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#44475a] pb-3">
+              <h3 className="text-base font-bold text-[#f8f8f2] flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-[#50fa7b]" />
+                Cadastrar Novo Usuário
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="text-[#6272a4] hover:text-[#f8f8f2]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-3 font-mono text-xs">
+              <div>
+                <label className="block text-[#6272a4] mb-1">Nome de Usuário (Login):</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex: joao.silva"
+                  value={newUserForm.username}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#50fa7b]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#6272a4] mb-1">Nome Completo:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex: João da Silva"
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#50fa7b]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#6272a4] mb-1">Email:</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="ex: joao@empresa.com.br"
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#50fa7b]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#6272a4] mb-1">Nível de Acesso (Role):</label>
+                <select
+                  value={newUserForm.role}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as any })}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#50fa7b]"
+                >
+                  <option value="network_operator">network_operator (Executar testes e perfis)</option>
+                  <option value="admin">admin (Acesso total + Gerenciar usuários)</option>
+                  <option value="auditor">auditor (Somente leitura e relatórios)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#6272a4] mb-1">Senha Inicial:</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Mínimo 4 caracteres"
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#50fa7b]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#44475a]">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-lg border border-[#44475a] px-3 py-1.5 text-xs text-[#6272a4] hover:text-[#f8f8f2]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[#50fa7b] px-4 py-1.5 text-xs font-bold text-[#1e1f29] hover:bg-[#50fa7b]/90 transition"
+                >
+                  Cadastrar Usuário
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Alterar Senha */}
+      {showPasswordModal && selectedUserForPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#44475a] bg-[#282a36] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#44475a] pb-3">
+              <h3 className="text-base font-bold text-[#f8f8f2] flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-[#bd93f9]" />
+                Alterar Senha
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setSelectedUserForPassword(null);
+                  setNewPassword('');
+                }}
+                className="text-[#6272a4] hover:text-[#f8f8f2]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#6272a4] font-mono">
+              Defina a nova senha para o usuário <strong className="text-[#8be9fd]">{selectedUserForPassword.username}</strong>:
+            </p>
+
+            <form onSubmit={handleUpdatePasswordSubmit} className="space-y-3 font-mono text-xs">
+              <div>
+                <label className="block text-[#6272a4] mb-1">Nova Senha:</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Mínimo 4 caracteres"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-[#f8f8f2] outline-none focus:border-[#bd93f9]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#44475a]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setSelectedUserForPassword(null);
+                    setNewPassword('');
+                  }}
+                  className="rounded-lg border border-[#44475a] px-3 py-1.5 text-xs text-[#6272a4] hover:text-[#f8f8f2]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[#bd93f9] px-4 py-1.5 text-xs font-bold text-[#1e1f29] hover:bg-[#bd93f9]/90 transition"
+                >
+                  Salvar Nova Senha
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { authenticateUser, requireAuth, AuthenticatedRequest } from './auth.js';
+import {
+  authenticateUser,
+  requireAuth,
+  requireRole,
+  AuthenticatedRequest,
+  listUsers,
+  createUser,
+  updateUserPassword,
+  deleteUser
+} from './auth.js';
 import { listProfiles, readProfile, saveProfile, ALLOWED_DIRS, AllowedDir, isValidProfileFilename } from './profilesService.js';
 import { trexManager } from './trexService.js';
 import { getAllReports, getReportById, deleteReport, exportReportAsCsv, exportReportAsMarkdown } from './reportsService.js';
@@ -44,6 +53,60 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
 app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   res.json({ user: req.user });
+});
+
+// User Management (Admin only)
+app.get('/api/users', requireAuth, requireRole(['admin']), (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const users = listUsers();
+    res.json({ users });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users', requireAuth, requireRole(['admin']), (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { username, name, email, role, password } = req.body;
+    if (!username || !password) {
+      res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
+      return;
+    }
+    const newUser = createUser({ username, name, email, role, password });
+    trexManager.addLog(`[AUTH] Novo usuário criado: ${newUser.username} (${newUser.role}) por ${req.user?.username}`);
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/users/:id/password', requireAuth, requireRole(['admin']), (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      res.status(400).json({ error: 'Nova senha é obrigatória.' });
+      return;
+    }
+    updateUserPassword(req.params.id, password);
+    trexManager.addLog(`[AUTH] Senha do usuário ID ${req.params.id} atualizada por ${req.user?.username}`);
+    res.json({ success: true, message: 'Senha atualizada com sucesso.' });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:id', requireAuth, requireRole(['admin']), (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.id === req.params.id) {
+      res.status(400).json({ error: 'Você não pode excluir seu próprio usuário atual.' });
+      return;
+    }
+    deleteUser(req.params.id);
+    trexManager.addLog(`[AUTH] Usuário ID ${req.params.id} excluído por ${req.user?.username}`);
+    res.json({ success: true, message: 'Usuário excluído com sucesso.' });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 /* -------------------------------------------------------------
