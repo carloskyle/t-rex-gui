@@ -478,7 +478,7 @@ class TRexManager {
 
       this.addLog(`--------------------------------------------------------------------------------`);
       this.addLog(`[EXEC] Iniciando injeção TRex via ${action} (${serverName.toUpperCase()})`);
-      this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração: ${targetDurationSec}s | Portas: ${ports.join(', ')}`);
+      this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração: ${targetDurationSec}s`);
 
       // 1. Start Server Engine safely
       if (fs.existsSync(serverScript)) {
@@ -489,12 +489,12 @@ class TRexManager {
           this.addLog(`[WARN] Script do servidor retornou: ${e.message}`);
         }
       } else {
-        this.addLog(`[SIM] Motor TRex ${serverName} inicializado (DPDK cores alocados: 8, Rx/Tx rings sincronizados)`);
+        this.addLog(`[SIM] Motor TRex ${serverName} inicializado (Rx/Tx rings sincronizados via /etc/trex_cfg.yaml)`);
       }
 
-      // 2. Start Traffic via Console or Simulation
+      // 2. Start Traffic via Console or Simulation (sem forçar portas ou cores específicos)
       const relativeProfilePath = `${dir}/${profile}`;
-      const consoleArgs = ['-f', relativeProfilePath, '-m', multiplier, '--port', ...ports.map(String)];
+      const consoleArgs = ['-f', relativeProfilePath, '-m', multiplier];
       if (targetDurationSec > 0) {
         consoleArgs.push('-d', `${targetDurationSec}`);
       }
@@ -503,7 +503,7 @@ class TRexManager {
 
       if (fs.existsSync(REAL_CONSOLE_BIN)) {
         // Execute real console command via temporary script as in legacy, but safely without shell injection
-        this.startRealConsoleProcess(relativeProfilePath, multiplier, targetDurationSec, ports);
+        this.startRealConsoleProcess(relativeProfilePath, multiplier, targetDurationSec);
       } else {
         // High fidelity DPDK simulation
         this.startSimulationInterval(multiplier, targetDurationSec);
@@ -543,12 +543,12 @@ class TRexManager {
     });
   }
 
-  private startRealConsoleProcess(relPath: string, multiplier: string, duration: number, ports: number[]): void {
+  private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
 sudo ${REAL_CONSOLE_BIN} << 'EOF'
-start -f ${relPath} -m ${multiplier} --port ${ports.join(' ')} -d ${duration}
+start -f ${relPath} -m ${multiplier} -d ${duration}
 EOF
 `;
     fs.writeFileSync(tmpScript, scriptContent, { mode: 0o700 });

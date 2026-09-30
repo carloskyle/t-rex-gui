@@ -135,7 +135,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         profile: selectedProfile,
         multiplier: getEffectiveMultiplier(),
         duration: getEffectiveDuration(),
-        ports: [0, 1],
       });
 
       setActionFeedback({
@@ -288,7 +287,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </span>
           </div>
           <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
-            8 Cores Alocados
+            TRex Auto Cores
           </div>
         </div>
       </div>
