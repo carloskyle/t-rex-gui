@@ -754,39 +754,85 @@ EOF
     }
 
     const pyScriptPath = path.join('/tmp', 'trex_telemetry_monitor.py');
-    const pyCode = `import sys, json, time
-sys.path.append('${REAL_TREX_DIR}/automation/trex_control_plane/interactive')
+    const pyCode = `import sys, os, json, time
+
+interactive_dir = '${REAL_TREX_DIR}/automation/trex_control_plane/interactive'
+if interactive_dir not in sys.path:
+    sys.path.insert(0, interactive_dir)
+
 try:
-    from trex.stl.api import STLClient
-    c = STLClient(server='127.0.0.1', verbose_level='none')
-    c.connect()
-    while True:
-        s = c.get_stats()
+    import outer_packages
+except Exception:
+    pass
+
+client = None
+
+while True:
+    try:
+        if client is None:
+            try:
+                from trex.stl.api import STLClient
+                client = STLClient(server='127.0.0.1', verbose_level='none')
+                client.connect()
+            except Exception as stl_err:
+                try:
+                    from trex.astf.api import ASTFClient
+                    client = ASTFClient(server='127.0.0.1')
+                    client.connect()
+                except Exception as astf_err:
+                    print(json.dumps({'error': f'Conectando ao TRex: {stl_err}'}), flush=True)
+                    time.sleep(1)
+                    continue
+
+        s = client.get_stats()
         tot = s.get('total', {})
         p0 = s.get(0, {})
         p1 = s.get(1, {})
         glob = s.get('global', {})
+
+        tx_bps = float(tot.get('tx_bps', 0))
+        rx_bps = float(tot.get('rx_bps', 0))
+        tx_pps = float(tot.get('tx_pps', 0))
+        rx_pps = float(tot.get('rx_pps', 0))
+
+        p0_tx = float(p0.get('tx_bps', 0))
+        p0_rx = float(p0.get('rx_bps', 0))
+        p1_tx = float(p1.get('tx_bps', 0))
+        p1_rx = float(p1.get('rx_bps', 0))
+
+        if tx_bps == 0 and (p0_tx > 0 or p1_tx > 0):
+            tx_bps = p0_tx + p1_tx
+        if rx_bps == 0 and (p0_rx > 0 or p1_rx > 0):
+            rx_bps = p0_rx + p1_rx
+
         res = {
-            'tx_bps': float(tot.get('tx_bps', 0)),
-            'rx_bps': float(tot.get('rx_bps', 0)),
-            'tx_pps': float(tot.get('tx_pps', 0)),
-            'rx_pps': float(tot.get('rx_pps', 0)),
+            'tx_bps': tx_bps,
+            'rx_bps': rx_bps,
+            'tx_pps': tx_pps,
+            'rx_pps': rx_pps,
             'opackets': int(tot.get('opackets', 0)),
             'ipackets': int(tot.get('ipackets', 0)),
-            'p0_tx_bps': float(p0.get('tx_bps', 0)),
-            'p0_rx_bps': float(p0.get('rx_bps', 0)),
+            'p0_tx_bps': p0_tx,
+            'p0_rx_bps': p0_rx,
             'p0_opkts': int(p0.get('opackets', 0)),
             'p0_ipkts': int(p0.get('ipackets', 0)),
-            'p1_tx_bps': float(p1.get('tx_bps', 0)),
-            'p1_rx_bps': float(p1.get('rx_bps', 0)),
+            'p1_tx_bps': p1_tx,
+            'p1_rx_bps': p1_rx,
             'p1_opkts': int(p1.get('opackets', 0)),
             'p1_ipkts': int(p1.get('ipackets', 0)),
             'cpu_util': float(glob.get('cpu_util', 0))
         }
         print(json.dumps(res), flush=True)
-        time.sleep(1)
-except Exception as e:
-    print(json.dumps({'error': str(e)}), flush=True)
+    except Exception as loop_err:
+        print(json.dumps({'error': f'{loop_err}'}), flush=True)
+        try:
+            if client:
+                client.disconnect()
+        except Exception:
+            pass
+        client = None
+
+    time.sleep(1)
 `;
     fs.writeFileSync(pyScriptPath, pyCode);
     this.realMonitorChild = spawn('python3', [pyScriptPath]);
@@ -850,8 +896,9 @@ except Exception as e:
     const rxBps = data.rx_bps || 0;
     const txPps = data.tx_pps || 0;
     const rxPps = data.rx_pps || 0;
-    const txGbps = (txBps * 8) / 1e9;
-    const rxGbps = (rxBps * 8) / 1e9;
+    // In TRex: tx_bps is already bits per second. 1 Gbps = 1e9 bps.
+    const txGbps = txBps / 1e9;
+    const rxGbps = rxBps / 1e9;
     const txMpps = txPps / 1e6;
     const rxMpps = rxPps / 1e6;
     const cpuUtil = data.cpu_util || 0;
@@ -881,8 +928,8 @@ except Exception as e:
     this.currentSampleStats.txPpsSamples.push(txMpps);
     this.currentSampleStats.rxPpsSamples.push(rxMpps);
     this.currentSampleStats.drops += drops;
-    this.currentSampleStats.totalTxBytes += txBps;
-    this.currentSampleStats.totalRxBytes += rxBps;
+    this.currentSampleStats.totalTxBytes += (txBps / 8);
+    this.currentSampleStats.totalRxBytes += (rxBps / 8);
     this.currentSampleStats.totalTxPkts += Math.round(txPps);
     this.currentSampleStats.totalRxPkts += Math.round(rxPps);
 
@@ -900,8 +947,8 @@ except Exception as e:
       this.status.ports[1].ipackets = data.p1_ipkts || this.status.ports[1].ipackets;
     }
 
-    if (elapsed > 0 && elapsed % 10 === 0) {
-      this.addLog(`[HARDWARE @ ${elapsed}s] Tx Real: ${txGbps.toFixed(2)} Gbps (${txMpps.toFixed(2)} Mpps) | Rx Real: ${rxGbps.toFixed(2)} Gbps | CPU TRex: ${cpuUtil.toFixed(1)}%`);
+    if (elapsed === 1 || (elapsed > 0 && elapsed % 10 === 0)) {
+      this.addLog(`[TELEMETRIA REAL @ ${elapsed}s] Tx: ${txGbps.toFixed(2)} Gbps (${txMpps.toFixed(2)} Mpps) | Rx: ${rxGbps.toFixed(2)} Gbps | CPU TRex: ${cpuUtil.toFixed(1)}%`);
     }
 
     if (remaining <= 0) {
