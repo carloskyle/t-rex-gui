@@ -58,10 +58,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     custom: { label: 'Personalizado', value: '' },
   };
 
-  const [multiplierChoice, setMultiplierChoice] = useState<string>('stl_10g');
+  const [multiplierChoice, setMultiplierChoice] = useState<string>('stl_1g');
   const [multiplierCustom, setMultiplierCustom] = useState<string>('25gbps');
 
-  const [durationChoice, setDurationChoice] = useState<string>('d_30');
+  const [durationChoice, setDurationChoice] = useState<string>('d_300');
   const [durationCustom, setDurationCustom] = useState<string>('45');
 
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
