@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Maximize2, Minimize2, Terminal, Shield, Zap, Activity } from 'lucide-react';
 import { TRexStatus, User } from '../types';
 import { ApiClient } from '../services/api';
+import { MetricTooltip } from './MetricTooltip';
 
 interface TrexTuiConsoleProps {
   status: TRexStatus | null;
@@ -247,34 +248,56 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Cpu Utilization:</span>
+                <MetricTooltip metric="cpuDpdk">
+                  <span className="text-slate-400">Cpu Utilization:</span>
+                </MetricTooltip>
                 <span className="text-yellow-300 font-bold">{(data?.metrics.cpuUtilPercent ?? 0).toFixed(1)}% (4 DPDK cores)</span>
               </div>
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total-Tx L2 (Payload):</span>
+                <MetricTooltip metric="txThroughput">
+                  <span className="text-slate-400">Total-Tx L2 (Payload):</span>
+                </MetricTooltip>
                 <span className="text-emerald-400 font-bold">{formatRateBps(totalTxBps)}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total-Tx L1 (Wire Rate):</span>
+                <MetricTooltip
+                  customDetails={{
+                    title: 'Throughput L1 Wire Rate (Framing IEEE 802.3)',
+                    definition: 'Vazão total no meio físico incluindo os 20 Bytes de overhead de framing por pacote (7B Preamble + 1B SFD + 12B IPG).',
+                    trexSource: 'Cálculo derivado de tx_bps + (tx_pps * 20 * 8)',
+                    formula: 'Throughput_L1 = Throughput_L2 + (PPS × 20 × 8 bits)',
+                    notes: 'Em pacotes de 64B, o overhead L1 representa 23.8% da largura de banda do meio.',
+                  }}
+                >
+                  <span className="text-slate-400">Total-Tx L1 (Wire Rate):</span>
+                </MetricTooltip>
                 <span className="text-emerald-300 font-bold">{formatRateBps(totalTxL1Bps)}</span>
               </div>
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total-Rx L2:</span>
+                <MetricTooltip metric="rxThroughput">
+                  <span className="text-slate-400">Total-Rx L2:</span>
+                </MetricTooltip>
                 <span className="text-cyan-400 font-bold">{formatRateBps(totalRxBps)}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total-Tx Packet Rate:</span>
+                <MetricTooltip metric="packetRate">
+                  <span className="text-slate-400">Total-Tx Packet Rate:</span>
+                </MetricTooltip>
                 <span className="text-sky-300 font-bold">{formatRatePps(totalTxPps)}</span>
               </div>
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total-Rx Packet Rate:</span>
+                <MetricTooltip metric="packetRate">
+                  <span className="text-slate-400">Total-Rx Packet Rate:</span>
+                </MetricTooltip>
                 <span className="text-cyan-300 font-bold">{formatRatePps(totalRxPps)}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Total Drop Rate:</span>
+                <MetricTooltip metric="dropRate">
+                  <span className="text-slate-400">Total Drop Rate:</span>
+                </MetricTooltip>
                 <span className={`font-bold ${(data?.metrics.dropRatePercent || 0) > 0.0001 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {(data?.metrics.dropRatePercent ?? 0).toFixed(4)}% {((data?.metrics.dropRatePercent || 0) > 0.0001 && (data?.metrics.rxDropBps || 0) > 0) ? `(${formatRateBps(data?.metrics.rxDropBps || 0)})` : '(0 bps)'}
                 </span>
@@ -285,13 +308,17 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
               </div>
 
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Average Latency (HW):</span>
+                <MetricTooltip metric="latency">
+                  <span className="text-slate-400">Average Latency (HW):</span>
+                </MetricTooltip>
                 <span className="text-purple-300 font-bold">
                   {(data?.metrics.latencyAvgMs ? data.metrics.latencyAvgMs * 1000 : 18.2).toFixed(2)} usec
                 </span>
               </div>
               <div className="flex justify-between border-b border-slate-900 py-0.5">
-                <span className="text-slate-400">Jitter (Inter-Packet):</span>
+                <MetricTooltip metric="jitter">
+                  <span className="text-slate-400">Jitter (Inter-Packet):</span>
+                </MetricTooltip>
                 <span className="text-purple-400 font-bold">
                   {(data?.metrics.jitterMs ? data.metrics.jitterMs * 1000 : 1.8).toFixed(2)} usec
                 </span>
@@ -344,19 +371,37 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
 
                 {/* Throughput */}
                 <tr className="bg-emerald-950/20 hover:bg-emerald-950/30 transition">
-                  <td className="py-2 px-3 font-bold text-emerald-400">Tx Throughput (L2 Payload)</td>
+                  <td className="py-2 px-3 font-bold text-emerald-400">
+                    <MetricTooltip metric="txThroughput">
+                      <span>Tx Throughput (L2 Payload)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 font-bold text-emerald-400 text-right font-mono">{formatRateBps(p0TxBps)}</td>
                   <td className="py-2 px-3 font-bold text-emerald-400 text-right font-mono">{formatRateBps(p1TxBps)}</td>
                   <td className="py-2 px-3 font-bold text-emerald-300 text-right font-mono">{formatRateBps(totalTxBps)}</td>
                 </tr>
                 <tr className="bg-cyan-950/20 hover:bg-cyan-950/30 transition">
-                  <td className="py-2 px-3 font-bold text-cyan-400">Rx Throughput (L2 Payload)</td>
+                  <td className="py-2 px-3 font-bold text-cyan-400">
+                    <MetricTooltip metric="rxThroughput">
+                      <span>Rx Throughput (L2 Payload)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 font-bold text-cyan-400 text-right font-mono">{formatRateBps(p0RxBps)}</td>
                   <td className="py-2 px-3 font-bold text-cyan-400 text-right font-mono">{formatRateBps(p1RxBps)}</td>
                   <td className="py-2 px-3 font-bold text-cyan-300 text-right font-mono">{formatRateBps(totalRxBps)}</td>
                 </tr>
                 <tr className="hover:bg-slate-900/40 transition">
-                  <td className="py-2 px-3 text-slate-400 font-medium">Tx Wire-Rate (L1 + 20B Overhead)</td>
+                  <td className="py-2 px-3 text-slate-400 font-medium">
+                    <MetricTooltip
+                      customDetails={{
+                        title: 'Tx Wire-Rate (L1 + 20B Overhead)',
+                        definition: 'Vazão bruta calculada no meio físico incluindo preâmbulo, SFD e Inter-Packet Gap (20 Bytes por pacote).',
+                        trexSource: 'Cálculo derivado de tx_bps + (tx_pps * 20 * 8)',
+                      }}
+                    >
+                      <span>Tx Wire-Rate (L1 + 20B Overhead)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 text-slate-300 text-right font-mono">{formatRateBps(p0TxL1Bps)}</td>
                   <td className="py-2 px-3 text-slate-300 text-right font-mono">{formatRateBps(p1TxL1Bps)}</td>
                   <td className="py-2 px-3 text-slate-100 text-right font-mono font-semibold">{formatRateBps(totalTxL1Bps)}</td>
@@ -364,13 +409,21 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
 
                 {/* Packet Rates */}
                 <tr className="hover:bg-slate-900/40 transition">
-                  <td className="py-2 px-3 text-sky-400 font-medium">Taxa de Pacotes Tx (pps)</td>
+                  <td className="py-2 px-3 text-sky-400 font-medium">
+                    <MetricTooltip metric="packetRate">
+                      <span>Taxa de Pacotes Tx (pps)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 text-sky-300 text-right font-mono font-bold">{formatRatePps(p0TxPps)}</td>
                   <td className="py-2 px-3 text-sky-300 text-right font-mono font-bold">{formatRatePps(p1TxPps)}</td>
                   <td className="py-2 px-3 text-sky-200 font-bold text-right font-mono">{formatRatePps(totalTxPps)}</td>
                 </tr>
                 <tr className="hover:bg-slate-900/40 transition">
-                  <td className="py-2 px-3 text-cyan-400 font-medium">Taxa de Pacotes Rx (pps)</td>
+                  <td className="py-2 px-3 text-cyan-400 font-medium">
+                    <MetricTooltip metric="packetRate">
+                      <span>Taxa de Pacotes Rx (pps)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 text-cyan-300 text-right font-mono font-bold">{formatRatePps(p0RxPps)}</td>
                   <td className="py-2 px-3 text-cyan-300 text-right font-mono font-bold">{formatRatePps(p1RxPps)}</td>
                   <td className="py-2 px-3 text-cyan-200 font-bold text-right font-mono">{formatRatePps(totalRxPps)}</td>
@@ -390,7 +443,11 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
                   <td className="py-2 px-3 text-white font-bold text-right font-mono">{((port0?.ipackets || 0) + (port1?.ipackets || 0)).toLocaleString()}</td>
                 </tr>
                 <tr className="hover:bg-slate-900/40 transition">
-                  <td className="py-2 px-3 text-slate-400 font-medium">Erros de Hardware (ierrors / oerrors)</td>
+                  <td className="py-2 px-3 text-slate-400 font-medium">
+                    <MetricTooltip metric="dropRate">
+                      <span>Erros de Hardware (ierrors / oerrors)</span>
+                    </MetricTooltip>
+                  </td>
                   <td className="py-2 px-3 text-emerald-400 text-right font-bold">0 / 0</td>
                   <td className="py-2 px-3 text-emerald-400 text-right font-bold">0 / 0</td>
                   <td className="py-2 px-3 text-emerald-400 font-bold text-right">0 / 0 (Zero Loss)</td>

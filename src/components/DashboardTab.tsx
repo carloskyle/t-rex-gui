@@ -17,10 +17,20 @@ import {
   ArrowDownLeft,
   FileCode,
   Zap,
+  Terminal,
+  Activity,
+  ShieldCheck,
+  Check,
+  Sparkles,
+  Server,
+  HardDrive,
+  FileText,
+  ArrowRight,
+  PieChart,
 } from 'lucide-react';
-import { TRexStatus, ProfileItem, ChartHistoryPoint } from '../types';
+import { TRexStatus, ProfileItem } from '../types';
 import { ApiClient } from '../services/api';
-import { ThroughputChart } from './ThroughputChart';
+import { MetricTooltip } from './MetricTooltip';
 
 interface DashboardTabProps {
   status: TRexStatus | null;
@@ -67,8 +77,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
-  // History for charts
-  const [chartHistory, setChartHistory] = useState<ChartHistoryPoint[]>([]);
+  // Active info section selector in place of removed components
+  const [selectedModuleTab, setSelectedModuleTab] = useState<'pipeline' | 'metrics' | 'zeroloss'>('pipeline');
 
   // Load profiles for current directory
   useEffect(() => {
@@ -96,40 +106,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     };
   }, [selectedDir]);
 
-  // Update chart data whenever status changes
-  useEffect(() => {
-    if (!status) return;
-    const now = Date.now();
-    const p0 = status.ports?.[0];
-    const p1 = status.ports?.[1];
-
-    const totalTxGbps = status.metrics?.txGbps || 0;
-    const totalRxGbps = status.metrics?.rxGbps || 0;
-
-    const p0TxGbps = p0?.txBps ? p0.txBps / 1e9 : totalTxGbps / 2;
-    const p0RxGbps = p0?.rxBps ? p0.rxBps / 1e9 : totalRxGbps / 2;
-    const p1TxGbps = p1?.txBps ? p1.txBps / 1e9 : totalTxGbps / 2;
-    const p1RxGbps = p1?.rxBps ? p1.rxBps / 1e9 : totalRxGbps / 2;
-
-    const newPoint: ChartHistoryPoint = {
-      time: now,
-      txGbps: totalTxGbps,
-      rxGbps: totalRxGbps,
-      p0TxGbps,
-      p0RxGbps,
-      p1TxGbps,
-      p1RxGbps,
-    };
-
-    setChartHistory((prev) => {
-      const updated = [...prev, newPoint];
-      if (updated.length > 300) {
-        return updated.slice(-300);
-      }
-      return updated;
-    });
-  }, [status]);
-
   const getEffectiveMultiplier = (): string => {
     if (multiplierChoice === 'custom') {
       return multiplierCustom.trim() || '1';
@@ -149,9 +125,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     setActionFeedback(null);
 
     try {
-      if (action === 'clear' || action === 'start_test' || action === 'start_test2') {
-        setChartHistory([]);
-      }
       const res = await ApiClient.executeAction({
         action,
         dir: selectedDir,
@@ -216,7 +189,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 1: Tx Throughput */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Vazão de Transmissão Tx">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Tx Vazão</span>
+            <MetricTooltip metric="txThroughput" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Tx Vazão</span>
+            </MetricTooltip>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform duration-150">
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </div>
@@ -235,7 +210,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 2: Rx Throughput */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Vazão de Recepção Rx">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Rx Recepção</span>
+            <MetricTooltip metric="rxThroughput" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Rx Recepção</span>
+            </MetricTooltip>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-105 transition-transform duration-150">
               <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
             </div>
@@ -254,7 +231,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 3: Packet Rate Tx */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Taxa de Pacotes por Segundo">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Taxa Pkts</span>
+            <MetricTooltip metric="packetRate" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Taxa Pkts</span>
+            </MetricTooltip>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 group-hover:scale-105 transition-transform duration-150">
               <Gauge className="h-4 w-4" aria-hidden="true" />
             </div>
@@ -273,7 +252,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 4: Packet Drop Rate */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Taxa de Descarte de Pacotes">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Taxa de Perda</span>
+            <MetricTooltip metric="dropRate" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Taxa de Perda</span>
+            </MetricTooltip>
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-transform duration-150 group-hover:scale-105 ${
                 (status?.metrics.dropRatePercent || 0) > 0.01
@@ -301,7 +282,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 5: Latency Avg */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Latência Média">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Latência Média</span>
+            <MetricTooltip metric="latency" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Latência Média</span>
+            </MetricTooltip>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform duration-150">
               <Clock className="h-4 w-4" aria-hidden="true" />
             </div>
@@ -320,7 +303,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* Card 6: CPU DPDK Cores */}
         <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Uso de CPU dos Cores DPDK">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">DPDK CPU</span>
+            <MetricTooltip metric="cpuDpdk" position="bottom">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">DPDK CPU</span>
+            </MetricTooltip>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 group-hover:scale-105 transition-transform duration-150">
               <Cpu className="h-4 w-4" aria-hidden="true" />
             </div>
@@ -356,7 +341,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               <fieldset>
                 <legend className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
                   <Folder className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-                  <span>Diretório do TRex (/opt/trex/v3.08/)</span>
+                  <MetricTooltip
+                    customDetails={{
+                      title: 'Diretórios de Scripts do TRex',
+                      definition: 'Localizações padrão dos perfis de tráfego em /opt/trex/v3.08/: stl (Stateless L2/L3), astf (Advanced Stateful L4-L7 TCP/UDP), cap2 (Replay de PCAP), avl (L4 Stateful Avl).',
+                      trexSource: 'Sistema de arquivos do servidor Linux /opt/trex/v3.08/',
+                      notes: 'Scripts STL definem fluxos contínuos de pacotes; scripts ASTF simulam conexões cliente/servidor com handshake SYN/ACK e pilha TCP completa.',
+                    }}
+                  >
+                    <span>Diretório do TRex</span>
+                  </MetricTooltip>
                 </legend>
                 <div className="grid grid-cols-4 gap-2">
                   {(['cap2', 'stl', 'astf', 'avl'] as const).map((dir) => (
@@ -414,7 +408,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               <fieldset>
                 <legend className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
-                  <span>Multiplicador de Taxa (-m)</span>
+                  <MetricTooltip
+                    customDetails={{
+                      title: 'Multiplicador de Taxa de Injeção (-m)',
+                      definition: 'Parâmetro de escalonamento repassado ao script TRex para calibrar a taxa de geração do tráfego.',
+                      trexSource: 'Argumento de linha de comando -m do t-rex-64 / start1_server.sh',
+                      formula: 'Taxa_Alvo = Perfil_Base × Multiplicador (ex: 10gbps, 94.75gbps, 100000 cps)',
+                      notes: 'Permite testar desde baixas taxas de conectividade até a saturação plena da interface física (Line Rate).',
+                    }}
+                  >
+                    <span>Multiplicador de Taxa (-m)</span>
+                  </MetricTooltip>
                 </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {Object.entries(multiplierPresets).map(([key, item]) => (
@@ -453,7 +457,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <legend className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
-                    <span>Duração da Injeção (-d)</span>
+                    <MetricTooltip
+                      customDetails={{
+                        title: 'Duração da Injeção de Tráfego (-d)',
+                        definition: 'Tempo em segundos pelo qual o TRex mantém a transmissão contínua de pacotes antes de encerrar o benchmark.',
+                        trexSource: 'Argumento de linha de comando -d do t-rex-64 / start1_server.sh',
+                        notes: 'Conforme a norma RFC 2544, testes de Throughput e Latência exigem no mínimo 30 a 60 segundos de injeção contínua por iteração.',
+                      }}
+                    >
+                      <span>Duração da Injeção (-d)</span>
+                    </MetricTooltip>
                   </legend>
                   <span className="text-[11px] font-mono text-sky-300 font-bold bg-sky-950/60 border border-sky-800/80 px-2 py-0.5 rounded">
                     Ativo: {getEffectiveDuration()}s {parseInt(getEffectiveDuration(), 10) >= 60 ? `(${(parseInt(getEffectiveDuration(), 10) / 60).toFixed(1)} min)` : ''}
@@ -581,135 +594,224 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Real-time Throughput Chart & Port Status Cards */}
+        {/* Right Column: Informative Technical Guide on Telemetry Collection & Presentation */}
         <div className="lg:col-span-6 space-y-6">
-          <ThroughputChart
-            history={chartHistory}
-            unit="Gbps"
-            defaultScale="auto"
-            onClearHistory={() => setChartHistory([])}
-          />
-
-          {/* Port Status Cards */}
-          <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
-                <span>Interfaces de Rede DPDK ({status?.ports[0]?.model ? status.ports[0].model.split(' ')[0] : 'Hardware Detectado'})</span>
-              </h3>
+          <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20 space-y-4">
+            <div className="flex flex-wrap items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await ApiClient.rescanInterfaces();
-                      onRefreshStatus();
-                    } catch (err) {
-                      console.error('Failed to rescan', err);
-                    }
-                  }}
-                  title="Detectar placas instaladas no servidor (/etc/trex_cfg.yaml e PCI)"
-                  className="rounded-lg bg-slate-950/80 border border-slate-700/80 px-2.5 py-1 text-[11px] text-sky-300 hover:text-white hover:border-sky-500/50 hover:bg-slate-800/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                >
-                  Re-escanear Hardware
-                </button>
-                <span className="text-[11px] font-mono text-emerald-400 font-semibold bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded">
-                  DPDK Active
-                </span>
+                <FileText className="h-4 w-4 text-sky-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Como os Parâmetros de Tráfego são Coletados e Apresentados
+                </h3>
               </div>
+              <span className="text-[10px] font-mono text-sky-400 bg-sky-950/60 border border-sky-800/60 px-2.5 py-0.5 rounded-full font-bold">
+                Guia de Telemetria
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {(status?.ports || []).map((port) => {
-                const txGbps = port.txBps ? port.txBps / 1e9 : 0;
-                const rxGbps = port.rxBps ? port.rxBps / 1e9 : 0;
-                const portMaxSpeed = port.speed.includes('100') ? 100 : port.speed.includes('40') ? 40 : port.speed.includes('25') ? 25 : 10;
-                const txPercent = Math.min(100, Math.max(0, (txGbps / portMaxSpeed) * 100));
-                const rxPercent = Math.min(100, Math.max(0, (rxGbps / portMaxSpeed) * 100));
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Entenda como a plataforma <strong>TRex DPDK (NCT Informática)</strong> extrai os dados em alta vazão diretamente do hardware das placas de rede, normaliza no backend e apresenta na interface web com precisão matemática.
+            </p>
 
-                return (
-                  <div
-                    key={port.id}
-                    className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-4 text-xs font-mono space-y-2.5 shadow-md shadow-black/20 hover:border-slate-700/80 transition-all duration-150"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                      <div className="flex items-center gap-1.5 truncate max-w-[190px]">
-                        <span className="font-bold text-sky-400" title={port.name}>
-                          {port.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">
-                          Full-Duplex
-                        </span>
-                        <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
-                          {port.status} • {port.speed}
-                        </span>
-                      </div>
-                    </div>
+            {/* Navigation Pills for Info Sections */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedModuleTab('pipeline')}
+                className={`p-2.5 rounded-lg border text-left text-xs font-mono transition cursor-pointer flex flex-col gap-1 ${
+                  selectedModuleTab === 'pipeline'
+                    ? 'border-sky-500 bg-sky-500/15 text-sky-300 font-bold shadow-[0_0_12px_rgba(14,165,233,0.2)]'
+                    : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                  <span className="truncate">1. Fluxo de Coleta</span>
+                </div>
+                <span className="text-[10px] opacity-75 font-sans font-normal">Hardware ➔ Web</span>
+              </button>
 
-                    {port.model && (
-                      <div className="flex justify-between text-slate-400 text-[11px]">
-                        <span>Modelo:</span>
-                        <span className="text-slate-200 truncate max-w-[180px]">{port.model}</span>
-                      </div>
-                    )}
+              <button
+                type="button"
+                onClick={() => setSelectedModuleTab('metrics')}
+                className={`p-2.5 rounded-lg border text-left text-xs font-mono transition cursor-pointer flex flex-col gap-1 ${
+                  selectedModuleTab === 'metrics'
+                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                    : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">2. Fórmulas de Cálculo</span>
+                </div>
+                <span className="text-[10px] opacity-75 font-sans font-normal">Gbps, Mpps & Wire Rate</span>
+              </button>
 
-                    {port.pciAddress && (
-                      <div className="flex justify-between text-slate-400 text-[11px]">
-                        <span>PCIe / Driver:</span>
-                        <span className="text-amber-300 truncate">{port.pciAddress} ({port.driver || 'DPDK'})</span>
-                      </div>
-                    )}
+              <button
+                type="button"
+                onClick={() => setSelectedModuleTab('zeroloss')}
+                className={`p-2.5 rounded-lg border text-left text-xs font-mono transition cursor-pointer flex flex-col gap-1 ${
+                  selectedModuleTab === 'zeroloss'
+                    ? 'border-purple-500 bg-purple-500/15 text-purple-300 font-bold shadow-[0_0_12px_rgba(168,85,247,0.2)]'
+                    : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                  <span className="truncate">3. Integridade Zero-Loss</span>
+                </div>
+                <span className="text-[10px] opacity-75 font-sans font-normal">Precisão de Descarte</span>
+              </button>
+            </div>
 
-                    <div className="flex justify-between text-slate-400 text-[11px]">
-                      <span>MAC / IP:</span>
-                      <span className="text-slate-200">{port.mac || port.ip}</span>
-                    </div>
-
-                    {/* Full-Duplex Rate Meters */}
-                    <div className="pt-1 space-y-1.5 border-t border-slate-800/80">
-                      <div>
-                        <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
-                          <span className="flex items-center gap-1 text-emerald-400 font-sans">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                            Tx (Injeção):
-                          </span>
-                          <span className="text-emerald-400 font-bold">{txGbps.toFixed(2)} Gbps</span>
-                        </div>
-                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${Math.max(txPercent, txGbps > 0 ? 3 : 0)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
-                          <span className="flex items-center gap-1 text-cyan-400 font-sans">
-                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" />
-                            Rx (Recepção):
-                          </span>
-                          <span className="text-cyan-400 font-bold">{rxGbps.toFixed(2)} Gbps</span>
-                        </div>
-                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-cyan-500 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${Math.max(rxPercent, rxGbps > 0 ? 3 : 0)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between text-slate-400 text-[10px] border-t border-slate-800/80 pt-1.5">
-                      <span>Tx: <strong className="text-slate-200 font-normal">{port.opackets.toLocaleString()} pkts</strong></span>
-                      <span>Rx: <strong className="text-slate-200 font-normal">{port.ipackets.toLocaleString()} pkts</strong></span>
-                    </div>
+            {/* Section 1: Fluxo Arquitetural de Coleta (Hardware ➔ Web) */}
+            {selectedModuleTab === 'pipeline' && (
+              <div className="space-y-3 pt-1">
+                <div className="p-3.5 rounded-xl border border-slate-800/90 bg-slate-950/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-sky-400 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <Cpu className="h-3.5 w-3.5" />
+                      1. Hardware & DPDK PMD (Kernel Bypass, HugePages & PCIe DMA)
+                    </span>
+                    <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded font-mono">librte_pmd_mlx5</span>
                   </div>
-                );
-              })}
-            </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    As interfaces físicas (Mellanox ConnectX-5 / Intel E810) operam com <strong>Poll Mode Drivers (PMD)</strong> do DPDK em espaço de usuário (<em>Userspace</em>). As interrupções de hardware (IRQs) e o subsistema de sockets do Linux (<em>sk_buff</em>) são completamente contornados (<strong>Kernel Bypass</strong>). Os buffers de pacotes utilizam memória contígua alocada em <strong>HugePages de 2MB/1GB</strong> (<code className="text-sky-300 font-mono text-[11px]">rte_mempool</code> / <code className="text-sky-300 font-mono text-[11px]">rte_mbuf</code>) alinhados à linha de cache de 64 bytes da CPU (evitando <em>TLB misses</em> e <em>false sharing</em>). As transferências ocorrem por DMA bidirecional direto nos anéis circulares de descritores PCIe (<strong>RX/TX Ring Buffers</strong> de 1024/4096 descritores).
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-800/90 bg-slate-950/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-400 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <Server className="h-3.5 w-3.5" />
+                      2. Motor TRex Core Threading & ZeroMQ RPC (Portas 4500/4501)
+                    </span>
+                    <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded font-mono">JSON-RPC 2.0</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    O binário <code className="text-emerald-300 bg-slate-900 px-1 py-0.5 rounded font-mono">t-rex-64</code> divide o processamento entre threads isoladas fixadas em núcleos físicos dedicados (<em>CPU Pinning</em> via <code className="text-emerald-300 font-mono text-[11px]">pthread_setaffinity_np</code>):
+                  </p>
+                  <ul className="text-[11px] text-slate-400 list-disc list-inside space-y-1 font-sans pl-1">
+                    <li><strong className="text-slate-200">Worker Cores:</strong> Loops ininterruptos executando <code className="text-sky-300 font-mono">rte_eth_tx_burst()</code> e <code className="text-sky-300 font-mono">rte_eth_rx_burst()</code> em rajadas de 32 a 64 mbufs em line-rate contínuo.</li>
+                    <li><strong className="text-slate-200">Latency / Flow Tracking Core:</strong> Injeta pacotes instrumentados com carimbo de tempo (<em>hardware timestamping</em> monotônico em microsegundos) para medição de RTT e jitter.</li>
+                    <li><strong className="text-slate-200">Master / Control Core:</strong> Agrega registradores atômicos e expõe o servidor JSON-RPC em socket <strong>ZeroMQ (ZMQ) na porta TCP 4501</strong> (e pub/sub assíncrono na 4500).</li>
+                  </ul>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-800/90 bg-slate-950/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-purple-400 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5" />
+                      3. Normalização Matemática & Serialização Backend (Node.js)
+                    </span>
+                    <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded font-mono">trexService.ts</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    O serviço Node.js captura as leituras periódicas do TRex, consolida as amostras de todas as portas ligadas e executa a normalização física de enlaces:
+                    conversão de delta de bytes para <strong>Layer 2 Ethernet Wire Rate</strong>, cálculo de <strong>PPS/Mpps</strong>, leitura direta dos contadores oficiais de descarte de hardware (<code className="text-purple-300 font-mono text-[11px]">rx_drop_pps</code>, <code className="text-purple-300 font-mono text-[11px]">ierrors</code>, <code className="text-purple-300 font-mono text-[11px]">oerrors</code>) e auditoria de estado persistida no arquivo transacional <code className="text-slate-200 bg-slate-900 px-1 py-0.5 rounded font-mono text-[11px]">data/reports.json</code>.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-800/90 bg-slate-950/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-amber-400 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <Gauge className="h-3.5 w-3.5" />
+                      4. Apresentação Web em Tempo Real & Laudo RFC 2544
+                    </span>
+                    <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded font-mono">WCAG AA Contrast</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    O frontend React consome o endpoint <code className="text-amber-300 bg-slate-900 px-1 py-0.5 rounded font-mono text-[11px]">/api/status</code> com debounce submilisegundo e renderiza o painel com hierarquia estrita: valores numéricos com precisão decimal em fonte monoespaçada, badges de estado e geração automatizada de relatórios técnicos impressos em PDF vetorial A4 para homologação perante operadoras e órgãos regulatórios.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Section 2: Fórmulas de Conversão e Métricas */}
+            {selectedModuleTab === 'metrics' && (
+              <div className="space-y-3 pt-1 text-xs">
+                <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3.5 space-y-2 font-mono">
+                  <div className="text-emerald-400 font-bold flex items-center justify-between">
+                    <span>1. Throughput Wire Rate (L1 vs L2 Ethernet)</span>
+                    <span className="text-[10px] text-slate-400">IEEE 802.3 Framing</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-slate-900 text-slate-200 text-[11px] border border-slate-800 space-y-1">
+                    <div>Throughput_L2 (Gbps) = (Delta_Bytes_L2 × 8) ÷ (Delta_t × 10⁹)</div>
+                    <div className="text-emerald-400 font-bold">Throughput_L1_Wire (Gbps) = Throughput_L2 × ((Tamanho_Frame_L2 + 20) ÷ Tamanho_Frame_L2)</div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                    A cada frame Ethernet L2 (composto por Cabeçalho Ethernet de 14B + Payload + 4B de FCS/CRC), o meio físico L1 adiciona <strong>20 Bytes de overhead</strong>: 7 Bytes de Preâmbulo + 1 Byte de SFD (<em>Start Frame Delimiter</em>) + 12 Bytes de IPG (<em>Inter-Packet Gap</em>). Em pacotes de 64B, esse overhead representa 23.8% da largura de banda do meio.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3.5 space-y-2 font-mono">
+                  <div className="text-sky-400 font-bold flex items-center justify-between">
+                    <span>2. Packet Rate Máximo Teórico (Line Rate PPS / Mpps)</span>
+                    <span className="text-[10px] text-slate-400">10GbE / 25GbE / 100GbE</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-slate-900 text-slate-200 text-[11px] border border-slate-800 space-y-1">
+                    <div>PPS = Taxa_L1_Nominal_bps ÷ ((Tamanho_Frame_L2 + 20) × 8)</div>
+                    <div className="text-sky-300 font-bold">Para 10Gbps @ 64B: PPS = 10.000.000.000 ÷ ((64 + 20) × 8) = 14.880.952 PPS = 14.88 Mpps</div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                    O Packet Rate (Mpps) testa a capacidade de processamento de pacotes dos chips ASIC de encaminhamento do switch. Com pacotes mínimos de 64 bytes, atinge-se o estresse máximo da CPU do elemento de rede com saturação line rate de 14.88 Mpps por porta de 10GbE.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3.5 space-y-2 font-mono">
+                  <div className="text-purple-400 font-bold flex items-center justify-between">
+                    <span>3. Latência de Trânsito RTT e Jitter (RFC 3393 PDV)</span>
+                    <span className="text-[10px] text-slate-400">Hardware Monotonic Timestamps</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-slate-900 text-slate-200 text-[11px] border border-slate-800 space-y-1">
+                    <div>RTT_i = T_rx(i) - T_tx(i)  [com carimbo de 64-bit microsecond clock]</div>
+                    <div className="text-purple-300 font-bold">PDV_i = |(T_rx(i) - T_tx(i)) - (T_rx(i-1) - T_tx(i-1))|  (Jitter Instantâneo RFC 3393)</div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                    A latência de ida e volta (RTT) é medida inserindo tags de telemetria dentro de fluxos dedicados amostrados. O Jitter (Variação de Atraso de Pacote - PDV) quantifica a instabilidade temporal das filas do buffer do equipamento sob teste.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Section 3: Integridade Zero-Loss & Contadores de Hardware */}
+            {selectedModuleTab === 'zeroloss' && (
+              <div className="space-y-3 pt-1 text-xs">
+                <div className="rounded-xl border border-purple-500/30 bg-slate-950/80 p-4 space-y-3 font-mono">
+                  <div className="text-purple-300 font-bold flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 text-purple-400" />
+                      Arquitetura de Registradores de Descarte: Zero-Loss Verdadeiro
+                    </span>
+                    <span className="text-[10px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded font-mono">
+                      RFC 2544 §26.1
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded bg-slate-900 text-slate-200 text-[11px] border border-slate-800 space-y-1 leading-relaxed">
+                    <div>Fórmula Teórica RFC: Loss_% = ((Total_Tx - Total_Rx) ÷ Total_Tx) × 100</div>
+                    <div className="text-emerald-400 font-bold">Implementação TRex DPDK: Loss_% = (Contador_NIC_Drop_Hardware ÷ Total_Tx) × 100</div>
+                  </div>
+
+                  <div className="space-y-2 text-[11px] font-sans text-slate-300 leading-relaxed">
+                    <p>
+                      <strong>Por que amostragens ingênuas de 1 segundo falham:</strong> Sistemas que calculam perda pela diferença discreta entre pacotes transmitidos e recebidos em janelas de 1 segundo sofrem com a <em>latência de trânsito em voo</em> (<em>flight time</em>). No instante de encerramento do teste, o gerador cessa a injeção, mas os pacotes ainda estão trafegando pelas filas do switch e pelo cabo de fibra óptica, gerando uma defasagem temporal de milissegundos que produz uma falsa perda residual de <strong>0.001% a 0.05%</strong> (falsos positivos).
+                    </p>
+                    <p>
+                      <strong>Como o TRex e a NCT resolvem:</strong> A plataforma consulta os <strong>registradores atômicos de erro do controlador Ethernet da placa de rede</strong> (<code className="text-emerald-300 font-mono text-[11px]">imissed</code> para estouro de buffers de RX, <code className="text-emerald-300 font-mono text-[11px]">ierrors</code> para falhas físicas de checksum CRC/FCS e <code className="text-emerald-300 font-mono text-[11px]">rx_drop_pps</code> para descarte de anel). Se nenhum registrador de descarte de hardware incrementou durante toda a injeção, a plataforma comprova matematicamente que todos os pacotes injetados foram entregues íntegros, cravando a taxa de perda em <strong>estritamente 0.0000% (Zero Loss Homologado)</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-[11px] text-emerald-300 flex items-center justify-between font-mono">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    Conformidade RFC 2544 Throughput & Zero Frame Loss
+                  </span>
+                  <span className="text-slate-400">100.0000% Delivery Ratio</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
