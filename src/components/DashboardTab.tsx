@@ -103,8 +103,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
     setChartHistory((prev) => {
       const updated = [...prev, newPoint];
-      if (updated.length > 30) {
-        return updated.slice(-30);
+      if (updated.length > 300) {
+        return updated.slice(-300);
       }
       return updated;
     });
@@ -403,10 +403,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
               {/* Duration (-d) */}
               <div>
-                <label className="block text-xs font-medium text-[#f8f8f2] mb-1.5 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-[#ff79c6]" />
-                  Duração do Teste em Segundos (-d)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-sky-400" />
+                    Duração da Injeção (-d)
+                  </label>
+                  <span className="text-[11px] font-mono text-sky-300 font-bold bg-sky-950/60 border border-sky-800/80 px-2 py-0.5 rounded">
+                    Ativo: {getEffectiveDuration()}s {parseInt(getEffectiveDuration(), 10) >= 60 ? `(${(parseInt(getEffectiveDuration(), 10) / 60).toFixed(1)} min)` : ''}
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                   {Object.entries(durationPresets).map(([key, item]) => (
                     <button
@@ -415,8 +421,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       onClick={() => setDurationChoice(key)}
                       className={`p-2 text-xs rounded-lg border text-center transition cursor-pointer ${
                         durationChoice === key
-                          ? 'border-[#ff79c6] bg-[#ff79c6]/15 text-[#ff79c6] font-semibold'
-                          : 'border-[#44475a] bg-[#1e1f29] text-[#6272a4] hover:text-[#f8f8f2]'
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
+                          : 'border-slate-800 bg-slate-900/90 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                       }`}
                     >
                       <div className="font-mono text-[11px]">{item.label}</div>
@@ -430,17 +436,20 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       type="number"
                       value={durationCustom}
                       onChange={(e) => setDurationCustom(e.target.value)}
-                      placeholder="Ex: 120"
-                      className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-2 text-xs font-mono text-[#f8f8f2] focus:border-[#ff79c6] focus:outline-none"
+                      placeholder="Ex: 300"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
                     />
                   </div>
                 )}
               </div>
 
               {/* Action Buttons matching the PHP functionalities */}
-              <div className="pt-2 border-t border-[#44475a] space-y-2">
-                <div className="text-[11px] font-medium text-[#6272a4]">
-                  Ações de Injeção e Controle do Servidor:
+              <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                <div className="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                  <span>Ações de Injeção e Controle do Servidor:</span>
+                  <span className="text-[10px] font-mono text-emerald-400">
+                    Duração travada: {getEffectiveDuration()}s
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -449,10 +458,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-[#50fa7b] px-4 py-2.5 text-xs font-bold text-[#1e1f29] shadow-md hover:brightness-110 active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer"
                   >
                     <Play className="h-4 w-4 fill-current" />
-                    <span>Iniciar Server 1</span>
+                    <span>Iniciar Server 1 ({getEffectiveDuration()}s)</span>
                   </button>
 
                   {/* Start Test 2 (Server 2) */}
@@ -460,10 +469,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test2')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-[#8be9fd] px-4 py-2.5 text-xs font-bold text-[#1e1f29] shadow-md hover:brightness-110 active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer"
                   >
                     <Play className="h-4 w-4 fill-current" />
-                    <span>Iniciar Server 2</span>
+                    <span>Iniciar Server 2 ({getEffectiveDuration()}s)</span>
                   </button>
                 </div>
 

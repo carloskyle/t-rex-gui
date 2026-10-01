@@ -586,7 +586,9 @@ class TRexManager {
 
       const serverName = action === 'start_test' ? 'server1' : 'server2';
       const serverScript = action === 'start_test' ? START1_SCRIPT : START2_SCRIPT;
-      const targetDurationSec = Math.max(1, Math.min(3600, parseInt(duration, 10) || 30));
+      const rawDuration = req.duration !== undefined && req.duration !== null ? String(req.duration).trim() : '30';
+      const parsedSec = parseInt(rawDuration, 10);
+      const targetDurationSec = Math.max(1, Math.min(3600, !isNaN(parsedSec) && parsedSec > 0 ? parsedSec : 30));
 
       this.activeAction = action;
       this.activeOperator = operator;
@@ -620,7 +622,7 @@ class TRexManager {
 
       this.addLog(`--------------------------------------------------------------------------------`);
       this.addLog(`[EXEC] Iniciando injeção TRex via ${action} (${serverName.toUpperCase()})`);
-      this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração: ${targetDurationSec}s`);
+      this.addLog(`[CONFIG] Perfil: ${dir}/${profile} | Taxa: ${multiplier} | Duração Travada: ${targetDurationSec}s (${(targetDurationSec / 60).toFixed(1)} min)`);
 
       // 1. Verify if TRex RPC port 4501 is ACTUALLY listening
       const isPort4501Open = await this.checkPortListening(4501, '127.0.0.1', 800);
@@ -707,15 +709,17 @@ class TRexManager {
 
   private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
+    // Ensure -d is placed right after -f so TRex parser sets the duration limit explicitly
     const durationArg = duration > 0 ? ` -d ${duration}` : '';
     // Use -s 127.0.0.1 to avoid IPv6 localhost resolution mismatch
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
 ./trex-console -s 127.0.0.1 << 'EOF'
-start -f ${relPath} -m ${multiplier}${durationArg}
+start -f ${relPath}${durationArg} -m ${multiplier}
 EOF
 `;
     fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
+    this.addLog(`[TREX_CMD] Executando comando de injeção: start -f ${relPath}${durationArg} -m ${multiplier}`);
 
     let fullConsoleOutput = '';
     const child = spawn('/bin/bash', [tmpScript]);
@@ -926,6 +930,11 @@ while True:
       const remaining = Math.max(0, duration - elapsed);
       this.status.elapsedSeconds = elapsed;
       this.status.remainingSeconds = remaining;
+
+      if (elapsed > 0 && elapsed % 15 === 0) {
+        this.addLog(`[PROGRESS] Teste em execução: ${elapsed}s de ${duration}s (Restam ${remaining}s)`);
+      }
+
       if (remaining <= 0) {
         this.finishCurrentTest('COMPLETED');
       }
