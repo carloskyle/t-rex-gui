@@ -129,6 +129,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     setActionFeedback(null);
 
     try {
+      if (action === 'clear' || action === 'start_test' || action === 'start_test2') {
+        setChartHistory([]);
+      }
       const res = await ApiClient.executeAction({
         action,
         dir: selectedDir,
@@ -528,11 +531,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
         {/* Right Column: Dynamic DPDK Charts & Physical Ports */}
         <div className="lg:col-span-6 space-y-6">
-          {/* Real-time Throughput Chart */}
+          {/* Real-time Dynamic Throughput Chart */}
           <ThroughputChart
             history={chartHistory}
             unit="Gbps"
-            peakGbps={getEffectiveMultiplier().includes('100g') ? 100 : 25}
+            defaultScale="auto"
+            onClearHistory={() => setChartHistory([])}
           />
 
           {/* Port Status Cards */}
