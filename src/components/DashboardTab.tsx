@@ -36,7 +36,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Directory & Profile selection
   const [selectedDir, setSelectedDir] = useState<'cap2' | 'stl' | 'astf' | 'avl'>('stl');
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<string>('imix.yaml');
+  const [selectedProfile, setSelectedProfile] = useState<string>('imixsitehop.yaml');
 
   // Multiplier presets
   const multiplierPresets: Record<string, { label: string; value: string }> = {
