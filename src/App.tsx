@@ -97,7 +97,9 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'console' && <ConsoleTab />}
+            {activeTab === 'console' && (
+              <ConsoleTab status={status} user={user} />
+            )}
 
             {activeTab === 'reports' && <ReportsTab />}
 

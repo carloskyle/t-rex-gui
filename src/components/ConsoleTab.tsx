@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Trash2, ArrowDownCircle, ShieldCheck, CheckCircle2, Search } from 'lucide-react';
+import { Terminal, Trash2, ArrowDownCircle, ShieldCheck, CheckCircle2, Search, Monitor, FileText } from 'lucide-react';
 import { ApiClient } from '../services/api';
+import { TRexStatus, User } from '../types';
+import { TrexTuiConsole } from './TrexTuiConsole';
 
-export const ConsoleTab: React.FC = () => {
+interface ConsoleTabProps {
+  status?: TRexStatus | null;
+  user?: User;
+}
+
+export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, user }) => {
+  const [consoleMode, setConsoleMode] = useState<'tui' | 'raw'>('tui');
+  const [status, setStatus] = useState<TRexStatus | null>(initialStatus || null);
   const [logs, setLogs] = useState<string[]>([]);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [filterText, setFilterText] = useState<string>('');
@@ -10,26 +19,37 @@ export const ConsoleTab: React.FC = () => {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchLogs = async () => {
+  // Sync status if passed as prop, or fetch periodically
+  useEffect(() => {
+    if (initialStatus) {
+      setStatus(initialStatus);
+    }
+  }, [initialStatus]);
+
+  const fetchStatusAndLogs = async () => {
     try {
-      const res = await ApiClient.getLogs(200);
-      setLogs(res.logs);
+      const [statusRes, logsRes] = await Promise.all([
+        ApiClient.getStatus(),
+        ApiClient.getLogs(200),
+      ]);
+      setStatus(statusRes);
+      setLogs(logsRes.logs);
     } catch (err) {
-      console.error('Failed to get logs', err);
+      console.error('Failed to poll status/logs', err);
     }
   };
 
   useEffect(() => {
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 1500);
+    fetchStatusAndLogs();
+    const interval = setInterval(fetchStatusAndLogs, 1500);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (autoScroll && bottomRef.current) {
+    if (autoScroll && bottomRef.current && consoleMode === 'raw') {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs, autoScroll]);
+  }, [logs, autoScroll, consoleMode]);
 
   const handleClearLogs = async () => {
     try {
@@ -46,7 +66,7 @@ export const ConsoleTab: React.FC = () => {
     try {
       const res = await ApiClient.executeAction({ action });
       setCommandFeedback(res.message);
-      fetchLogs();
+      fetchStatusAndLogs();
       setTimeout(() => setCommandFeedback(null), 3000);
     } catch (err: any) {
       setCommandFeedback(`Erro: ${err.message}`);
@@ -58,69 +78,59 @@ export const ConsoleTab: React.FC = () => {
     : logs;
 
   return (
-    <div className="space-y-4" role="region" aria-label="Console do TRex">
-      {/* Top Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/95 p-4 shadow-sm">
+    <div className="space-y-4" role="region" aria-label="Console do TRex e Terminal TUI">
+      {/* Top View Selector Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/95 p-3.5 shadow-sm">
         <div className="flex items-center gap-2.5">
           <Terminal className="h-5 w-5 text-sky-400" aria-hidden="true" />
           <div>
-            <h2 className="text-sm font-bold text-slate-100">
-              TRex DPDK Console & Runtime Logs
+            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <span>Terminal & Console do TRex</span>
+              <span className="rounded bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 text-[9px] font-mono font-medium text-sky-400">
+                10.69.70.20:4501
+              </span>
             </h2>
             <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-mono">
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Shell Seguro via child_process.spawn</span>
+              <span>Sessão Oficial TRex DPDK STL / ASTF</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-            <input
-              type="text"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Filtrar logs..."
-              aria-label="Filtrar mensagens de log"
-              className="rounded-lg border border-slate-700 bg-slate-950 pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:border-sky-500 w-48"
-            />
-          </div>
-
-          {/* Auto-Scroll Toggle */}
+        {/* Console Mode Switcher (TUI vs Raw Logs) */}
+        <div
+          className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs"
+          role="tablist"
+          aria-label="Modo de exibição do console"
+        >
           <button
             type="button"
-            onClick={() => setAutoScroll(!autoScroll)}
-            aria-pressed={autoScroll}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 min-h-[36px] text-xs font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-              autoScroll
-                ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
-                : 'border-slate-700 bg-slate-950 text-slate-400 hover:text-slate-200'
+            role="tab"
+            aria-selected={consoleMode === 'tui'}
+            onClick={() => setConsoleMode('tui')}
+            className={`min-h-[36px] px-3 py-1.5 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+              consoleMode === 'tui'
+                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <ArrowDownCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Auto-Scroll</span>
+            <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Modo TRex TUI (Oficial)</span>
           </button>
 
-          {/* Query Stats */}
           <button
             type="button"
-            onClick={() => handleSendAction('stats')}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 min-h-[36px] text-xs font-medium text-sky-300 hover:bg-slate-800 hover:text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            role="tab"
+            aria-selected={consoleMode === 'raw'}
+            onClick={() => setConsoleMode('raw')}
+            className={`min-h-[36px] px-3 py-1.5 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+              consoleMode === 'raw'
+                ? 'bg-sky-600 text-white shadow-sm font-semibold'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
           >
-            <span>Consultar Stats</span>
-          </button>
-
-          {/* Clear Buffer */}
-          <button
-            type="button"
-            onClick={handleClearLogs}
-            aria-label="Limpar histórico de logs do console"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 min-h-[36px] text-xs font-medium text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Limpar</span>
+            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Logs de Execução (Raw)</span>
           </button>
         </div>
       </div>
@@ -136,57 +146,111 @@ export const ConsoleTab: React.FC = () => {
         </div>
       )}
 
-      {/* Terminal View */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden">
-        {/* Terminal Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-4 py-2 text-xs font-mono text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" aria-hidden="true" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" aria-hidden="true" />
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
-            <span className="ml-2 text-slate-200">root@trex-host-10-69-70-20:/opt/trex/v3.08#</span>
+      {/* RENDER MODE 1: TREX TUI CONSOLE (OFFICIAL CURSES INTERFACE) */}
+      {consoleMode === 'tui' ? (
+        <TrexTuiConsole status={status} user={user} />
+      ) : (
+        /* RENDER MODE 2: RAW SHELL LOGS */
+        <div className="space-y-3">
+          {/* Sub Toolbar for Raw Logs */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 text-xs">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="Filtrar saída de texto..."
+                aria-label="Filtrar mensagens de log"
+                className="rounded-lg border border-slate-700 bg-slate-950 pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 w-52"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAutoScroll(!autoScroll)}
+                aria-pressed={autoScroll}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 min-h-[34px] text-xs font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                  autoScroll
+                    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
+                    : 'border-slate-700 bg-slate-950 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ArrowDownCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Auto-Scroll</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSendAction('stats')}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 min-h-[34px] text-xs font-medium text-sky-300 hover:bg-slate-800 hover:text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              >
+                <span>Consultar Stats</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClearLogs}
+                aria-label="Limpar histórico de logs do console"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 min-h-[34px] text-xs font-medium text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Limpar</span>
+              </button>
+            </div>
           </div>
-          <span className="text-slate-300">{filteredLogs.length} linhas</span>
-        </div>
 
-        {/* Terminal Logs Output */}
-        <div
-          role="log"
-          aria-live="polite"
-          aria-label="Linhas de log do console TRex"
-          tabIndex={0}
-          className="h-[460px] overflow-y-auto p-4 font-mono text-xs leading-relaxed space-y-1 select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-        >
-          {filteredLogs.length === 0 ? (
-            <div className="text-slate-400 italic">Nenhuma saída de console gravada ainda.</div>
-          ) : (
-            filteredLogs.map((line, index) => {
-              // Color highlight based on log tags
-              let colorClass = 'text-slate-200';
-              if (line.includes('[ERR]') || line.includes('[ERROR]') || line.includes('Falha') || line.includes('FAIL')) {
-                colorClass = 'text-red-400 font-semibold';
-              } else if (line.includes('[AUTH]')) {
-                colorClass = 'text-purple-300';
-              } else if (line.includes('[START]') || line.includes('[SUCCESS]') || line.includes('online')) {
-                colorClass = 'text-emerald-400 font-medium';
-              } else if (line.includes('[SAMPLE') || line.includes('[STATS]')) {
-                colorClass = 'text-sky-300';
-              } else if (line.includes('[WARN]')) {
-                colorClass = 'text-amber-300';
-              } else if (line.includes('[FINISH]') || line.includes('[SUMMARY]')) {
-                colorClass = 'text-emerald-300 font-bold bg-emerald-950/40 border-l-2 border-emerald-400 pl-2 py-1';
-              }
+          {/* Terminal View */}
+          <div className="rounded-xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-4 py-2 text-xs font-mono text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-500" aria-hidden="true" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" aria-hidden="true" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                <span className="ml-2 text-slate-200">root@trex-host-10-69-70-20:/opt/trex/v3.08#</span>
+              </div>
+              <span className="text-slate-300">{filteredLogs.length} linhas</span>
+            </div>
 
-              return (
-                <div key={index} className={`break-all ${colorClass}`}>
-                  {line}
-                </div>
-              );
-            })
-          )}
-          <div ref={bottomRef} />
+            <div
+              role="log"
+              aria-live="polite"
+              aria-label="Linhas de log do console TRex"
+              tabIndex={0}
+              className="h-[460px] overflow-y-auto p-4 font-mono text-xs leading-relaxed space-y-1 select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+              {filteredLogs.length === 0 ? (
+                <div className="text-slate-400 italic">Nenhuma saída de console gravada ainda.</div>
+              ) : (
+                filteredLogs.map((line, index) => {
+                  let colorClass = 'text-slate-200';
+                  if (line.includes('[ERR]') || line.includes('[ERROR]') || line.includes('Falha') || line.includes('FAIL')) {
+                    colorClass = 'text-red-400 font-semibold';
+                  } else if (line.includes('[AUTH]')) {
+                    colorClass = 'text-purple-300';
+                  } else if (line.includes('[START]') || line.includes('[SUCCESS]') || line.includes('online')) {
+                    colorClass = 'text-emerald-400 font-medium';
+                  } else if (line.includes('[SAMPLE') || line.includes('[STATS]')) {
+                    colorClass = 'text-sky-300';
+                  } else if (line.includes('[WARN]')) {
+                    colorClass = 'text-amber-300';
+                  } else if (line.includes('[FINISH]') || line.includes('[SUMMARY]')) {
+                    colorClass = 'text-emerald-300 font-bold bg-emerald-950/40 border-l-2 border-emerald-400 pl-2 py-1';
+                  }
+
+                  return (
+                    <div key={index} className={`break-all ${colorClass}`}>
+                      {line}
+                    </div>
+                  );
+                })
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
