@@ -1,13 +1,13 @@
 import React from 'react';
-import { Server, Radio, Square, FileCode, Terminal, FileText, Settings, LogOut, Shield, Activity } from 'lucide-react';
+import { Server, Radio, Square, FileCode, Terminal, FileText, Settings, LogOut, Shield } from 'lucide-react';
 import { TRexStatus, User } from '../types';
 import { NctLogo } from './NctLogo';
 
 interface NavbarProps {
   user: User;
   status: TRexStatus | null;
-  activeTab: 'dashboard' | 'profiles' | 'console' | 'traffic-analysis' | 'reports' | 'settings';
-  onTabChange: (tab: 'dashboard' | 'profiles' | 'console' | 'traffic-analysis' | 'reports' | 'settings') => void;
+  activeTab: 'dashboard' | 'profiles' | 'console' | 'reports' | 'settings';
+  onTabChange: (tab: 'dashboard' | 'profiles' | 'console' | 'reports' | 'settings') => void;
   onEmergencyStop: () => void;
   onLogout: () => void;
 }
@@ -24,7 +24,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navItems = [
     { id: 'dashboard' as const, label: 'Controle & Injeção', icon: Radio },
-    { id: 'traffic-analysis' as const, label: 'Análise de Tráfego', icon: Activity },
     { id: 'profiles' as const, label: 'Editor de Perfis', icon: FileCode },
     { id: 'console' as const, label: 'Console TRex', icon: Terminal },
     { id: 'reports' as const, label: 'Relatórios & Histórico', icon: FileText },

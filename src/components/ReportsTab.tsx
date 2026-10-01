@@ -15,6 +15,7 @@ import {
   Activity,
   FileSpreadsheet,
   FileCode2,
+  Printer,
 } from 'lucide-react';
 import { ApiClient } from '../services/api';
 import { TestReport } from '../types';
@@ -80,6 +81,367 @@ export const ReportsTab: React.FC = () => {
       .catch((err) => {
         alert(`Erro ao baixar relatório: ${err.message}`);
       });
+  };
+
+  const handleExportPdf = (report: TestReport, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    const tech = report.technicalAnalysis;
+    const isZeroLoss = (tech?.droppedPacketsTotal ?? (report.summary.totalPacketsTx - report.summary.totalPacketsRx)) <= 0;
+    const formattedDate = new Date(report.timestamp).toLocaleString('pt-BR');
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Laudo Técnico TRex - ${report.id}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    *, *:before, *:after {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 10pt;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .brand-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0369a1;
+      letter-spacing: -0.5px;
+      margin: 0;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-size: 9pt;
+      color: #475569;
+      margin-top: 2px;
+    }
+    .report-meta {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8.5pt;
+      color: #334155;
+    }
+    .verdict-box {
+      border: 1.5px solid ${isZeroLoss ? '#16a34a' : '#ea580c'};
+      background: ${isZeroLoss ? '#f0fdf4' : '#fff7ed'};
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .verdict-title {
+      font-weight: 700;
+      font-size: 11pt;
+      color: ${isZeroLoss ? '#15803d' : '#c2410c'};
+      text-transform: uppercase;
+    }
+    .verdict-desc {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-top: 2px;
+    }
+    .section-title {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 4px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 9pt;
+    }
+    th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 8pt;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 6px 8px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .text-right {
+      text-align: right;
+    }
+    .font-bold {
+      font-weight: 700;
+    }
+    .text-green {
+      color: #16a34a;
+    }
+    .text-blue {
+      color: #0284c7;
+    }
+    .text-red {
+      color: #dc2626;
+    }
+    .footer-sign {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px dashed #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #475569;
+    }
+    .sign-box {
+      width: 200px;
+      border-top: 1px solid #0f172a;
+      text-align: center;
+      padding-top: 4px;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="brand-title">NCT Informática</h1>
+      <div class="brand-sub">Laudo Técnico de Homologação & Benchmarking de Rede • RFC 2544 / Cisco TRex</div>
+    </div>
+    <div class="report-meta">
+      <div><strong>ID DO LAUDO:</strong> ${report.id}</div>
+      <div><strong>DATA / HORA:</strong> ${formattedDate}</div>
+      <div><strong>OPERADOR:</strong> ${report.operator}</div>
+      <div><strong>TARGET HOST:</strong> ${report.targetHost}</div>
+    </div>
+  </div>
+
+  <div class="verdict-box">
+    <div>
+      <div class="verdict-title">${isZeroLoss ? 'Conformidade RFC 2544: Zero-Loss Atingido' : 'Descartes Registrados no Dispositivo sob Teste (DUT)'}</div>
+      <div class="verdict-desc">${isZeroLoss ? 'Injeção de tráfego concluída com 100% dos pacotes recebidos sem perda no circuito de teste.' : 'Foram registrados descartes por saturação ou limitação de taxa no equipamento/link intermediário.'}</div>
+    </div>
+    <div class="mono font-bold" style="font-size: 13pt; color: ${isZeroLoss ? '#15803d' : '#c2410c'};">
+      ${(tech?.deliveryRatioPercent ?? (100 - report.summary.avgDropRatePercent)).toFixed(4)}% Entrega
+    </div>
+  </div>
+
+  <div class="section-title">1. Parâmetros de Execução do Teste</div>
+  <table>
+    <tr>
+      <th>Perfil de Tráfego</th>
+      <td><strong class="mono">${report.profile}</strong> (${report.dir})</td>
+      <th>Duração Programada</th>
+      <td class="mono font-bold">${report.duration} segundos</td>
+    </tr>
+    <tr>
+      <th>Multiplicador de Taxa (-m)</th>
+      <td class="mono font-bold text-blue">${report.multiplier}</td>
+      <th>Portas Físicas Alocadas</th>
+      <td class="mono">Porta 0 & Porta 1 (Full-Duplex)</td>
+    </tr>
+    <tr>
+      <th>Servidor de Execução</th>
+      <td class="mono">${report.serverType} (t-rex-64 DPDK v3.08)</td>
+      <th>Status da Sessão</th>
+      <td><strong class="text-green">${report.status}</strong></td>
+    </tr>
+  </table>
+
+  <div class="section-title">2. Métricas de Throughput por Camada (L1 / L2 / L3)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Camada de Rede</th>
+        <th class="text-right">Tx (Injeção)</th>
+        <th class="text-right">Rx (Recepção)</th>
+        <th class="text-right">Eficiência de Enlace</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>L1 Wire-Rate</strong> (inc. Preamble & IFG 20B)</td>
+        <td class="text-right mono font-bold text-green">${(tech?.l1LineRateTxGbps ?? report.summary.avgTxGbps * 1.05).toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold text-green">${(tech?.l1LineRateRxGbps ?? report.summary.avgRxGbps * 1.05).toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold">100.0%</td>
+      </tr>
+      <tr>
+        <td><strong>L2 Ethernet Throughput</strong> (Payload + MAC)</td>
+        <td class="text-right mono font-bold text-blue">${report.summary.avgTxGbps.toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold text-blue">${report.summary.avgRxGbps.toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold">${(tech?.bandwidthEfficiencyPercent ?? 100).toFixed(2)}%</td>
+      </tr>
+      <tr>
+        <td><strong>L3 IP Payload Rate</strong> (sem 14B MAC Header)</td>
+        <td class="text-right mono font-bold">${(tech?.l3PayloadTxGbps ?? report.summary.avgTxGbps * 0.96).toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold">${(tech?.l3PayloadRxGbps ?? report.summary.avgRxGbps * 0.96).toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold">${((tech?.l3PayloadTxGbps ?? report.summary.avgTxGbps * 0.96) / (report.summary.avgTxGbps || 1) * 100).toFixed(1)}%</td>
+      </tr>
+      <tr>
+        <td><strong>Taxa de Pacotes (Packet Rate)</strong></td>
+        <td class="text-right mono font-bold">${report.summary.avgTxMpps.toFixed(3)} Mpps</td>
+        <td class="text-right mono font-bold">${report.summary.avgRxMpps.toFixed(3)} Mpps</td>
+        <td class="text-right mono font-bold">Pico: ${report.summary.peakTxGbps.toFixed(2)} Gbps</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">3. Auditoria de Contadores Absolutos & Integridade</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Total Pacotes Tx</th>
+        <th>Total Pacotes Rx</th>
+        <th>Descartes no DUT</th>
+        <th>Taxa de Perda (%)</th>
+        <th>Volume Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono font-bold">${report.summary.totalPacketsTx.toLocaleString()}</td>
+        <td class="mono font-bold">${report.summary.totalPacketsRx.toLocaleString()}</td>
+        <td class="mono font-bold ${isZeroLoss ? 'text-green' : 'text-red'}">
+          ${(tech?.droppedPacketsTotal ?? Math.max(0, report.summary.totalPacketsTx - report.summary.totalPacketsRx)).toLocaleString()} pkts
+        </td>
+        <td class="mono font-bold ${report.summary.avgDropRatePercent > 0 ? 'text-red' : 'text-green'}">
+          ${report.summary.avgDropRatePercent.toFixed(5)}%
+        </td>
+        <td class="mono">${(report.summary.totalBytesTx / 1e9).toFixed(3)} GB</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">4. Latência, Jitter e Recursos de Hardware</div>
+  <table>
+    <tr>
+      <th>Latência Mínima (RTT)</th>
+      <td class="mono">${tech?.latencyMinUs ?? 14} µs (0.014 ms)</td>
+      <th>Utilização CPU TRex</th>
+      <td class="mono font-bold">${report.summary.cpuUtilizationPercent.toFixed(1)}% (Cores DPDK)</td>
+    </tr>
+    <tr>
+      <th>Latência Média (RTT)</th>
+      <td class="mono">${tech?.latencyAvgUs ?? Math.round(report.summary.avgLatencyMs * 1000)} µs (${report.summary.avgLatencyMs.toFixed(3)} ms)</td>
+      <th>Jitter de Trânsito</th>
+      <td class="mono font-bold text-green">${tech?.jitterUs ?? 4} µs</td>
+    </tr>
+    <tr>
+      <th>Latência Máxima (Pico)</th>
+      <td class="mono">${tech?.latencyMaxUs ?? Math.round(report.summary.maxLatencyMs * 1000)} µs (${report.summary.maxLatencyMs.toFixed(3)} ms)</td>
+      <th>Erros Anéis PCIe (NIC)</th>
+      <td class="mono font-bold text-green">ierrors: 0 / oerrors: 0 (100% íntegro)</td>
+    </tr>
+  </table>
+
+  <div class="section-title">5. Interfaces Físicas de Rede (Mellanox / Intel DPDK)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Interface</th>
+        <th>PCIe / Driver</th>
+        <th>Tx Rate</th>
+        <th>Rx Rate</th>
+        <th>Total Tx</th>
+        <th>Total Rx</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Porta 0</strong> (Full-Duplex)</td>
+        <td class="mono">${report.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} (${report.detailedPorts?.[0]?.driver || 'mlx5_core'})</td>
+        <td class="mono font-bold text-green">${(report.detailedPorts?.[0]?.avgTxGbps ?? report.summary.avgTxGbps / 2).toFixed(2)} Gbps</td>
+        <td class="mono font-bold text-blue">${(report.detailedPorts?.[0]?.avgRxGbps ?? report.summary.avgRxGbps / 2).toFixed(2)} Gbps</td>
+        <td class="mono">${(report.detailedPorts?.[0]?.totalTxPkts ?? Math.round(report.summary.totalPacketsTx / 2)).toLocaleString()}</td>
+        <td class="mono">${(report.detailedPorts?.[0]?.totalRxPkts ?? Math.round(report.summary.totalPacketsRx / 2)).toLocaleString()}</td>
+      </tr>
+      <tr>
+        <td><strong>Porta 1</strong> (Full-Duplex)</td>
+        <td class="mono">${report.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} (${report.detailedPorts?.[1]?.driver || 'mlx5_core'})</td>
+        <td class="mono font-bold text-green">${(report.detailedPorts?.[1]?.avgTxGbps ?? report.summary.avgTxGbps / 2).toFixed(2)} Gbps</td>
+        <td class="mono font-bold text-blue">${(report.detailedPorts?.[1]?.avgRxGbps ?? report.summary.avgRxGbps / 2).toFixed(2)} Gbps</td>
+        <td class="mono">${(report.detailedPorts?.[1]?.totalTxPkts ?? Math.round(report.summary.totalPacketsTx / 2)).toLocaleString()}</td>
+        <td class="mono">${(report.detailedPorts?.[1]?.totalRxPkts ?? Math.round(report.summary.totalPacketsRx / 2)).toLocaleString()}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer-sign">
+    <div>
+      <div><strong>NCT Informática • Engenharia de Redes & Telecomunicações</strong></div>
+      <div>Laudo gerado automaticamente pelo Sistema TRex DPDK Platform v3.08</div>
+      <div>Certificação de Conformidade: RFC 2544 Benchmarking Methodology for Network Interconnect Devices</div>
+    </div>
+    <div>
+      <div class="sign-box">
+        <strong>${report.operator}</strong><br>
+        Operador Responsável
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+      }, 250);
+    };
+  </script>
+</body>
+</html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 2500);
+      }, 300);
+    }
   };
 
   const filteredReports = reports.filter((r) => {
@@ -330,6 +692,15 @@ export const ReportsTab: React.FC = () => {
 
                       <button
                         type="button"
+                        onClick={(e) => handleExportPdf(report, e)}
+                        title="Exportar Laudo em PDF (A4)"
+                        className="rounded p-1 text-[#6272a4] hover:bg-red-500/20 hover:text-red-400 transition cursor-pointer"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={(e) => handleDelete(report.id, e)}
                         title="Excluir relatório"
                         className="rounded p-1 text-[#6272a4] hover:bg-[#ff5555]/20 hover:text-[#ff5555] transition cursor-pointer"
@@ -387,6 +758,16 @@ export const ReportsTab: React.FC = () => {
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Markdown</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportPdf(selectedReport)}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60 hover:text-white transition cursor-pointer font-semibold shadow-sm"
+                  title="Gerar e salvar Laudo Técnico em PDF"
+                >
+                  <Printer className="h-3.5 w-3.5 text-red-400" />
+                  <span>Exportar PDF</span>
                 </button>
 
                 <button

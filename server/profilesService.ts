@@ -37,6 +37,58 @@ export function initializeProfilesStorage(): void {
   const samples: Array<{ dir: AllowedDir; file: string; content: string }> = [
     {
       dir: 'stl',
+      file: 'imixsitehop.py',
+      content: `# Cisco TRex Stateless IMIX Site-to-Site Multi-Hop Benchmark
+from trex_stl_lib.api import *
+
+class STLS1(object):
+    def __init__(self):
+        self.fsize_mix = [(64, 58), (594, 33), (1518, 9)]
+
+    def create_stream(self, fsize, pps):
+        base_pkt = Ether()/IP(src="16.0.0.1", dst="48.0.0.1")/UDP(dport=12, sport=1025)
+        pad = max(0, fsize - len(base_pkt)) * 'x'
+        pkt = STLPktBuilder(pkt=base_pkt/pad)
+        return STLStream(
+            packet=pkt,
+            mode=STLTXCont(pps=pps)
+        )
+
+    def get_streams(self, direction=0, **kwargs):
+        streams = []
+        for fsize, weight in self.fsize_mix:
+            streams.append(self.create_stream(fsize, weight * 1000))
+        return streams
+
+def register():
+    return STLS1()
+`
+    },
+    {
+      dir: 'stl',
+      file: 'imixsitehop.yaml',
+      content: `# Cisco TRex Stateless IMIX Site-to-Site Multi-Hop Benchmark
+# Real-world Internet Traffic Mix: 64B (58%), 594B (33%), 1518B (9%)
+- duration : 0.1
+  generator :
+    distribution : "seq"
+    clients_start : "16.0.0.1"
+    clients_end   : "16.0.0.254"
+    servers_start : "48.0.0.1"
+    servers_end   : "48.0.0.254"
+    clients_per_gb : 201
+    min_rate_bps : 1000000000
+  cap_info :
+    - name: cap2/small_packet.pcap
+      cps : 58.0
+    - name: cap2/medium_packet.pcap
+      cps : 33.0
+    - name: cap2/large_packet.pcap
+      cps : 9.0
+`
+    },
+    {
+      dir: 'stl',
       file: 'imix.yaml',
       content: `# Cisco TRex Stateless IMIX Profile
 # Real-world Internet Traffic Mix: 64B (58%), 594B (33%), 1518B (9%)

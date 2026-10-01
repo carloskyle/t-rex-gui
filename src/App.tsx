@@ -7,17 +7,16 @@ import { DashboardTab } from './components/DashboardTab';
 import { ProfileEditorTab } from './components/ProfileEditorTab';
 import { ConsoleTab } from './components/ConsoleTab';
 import { ReportsTab } from './components/ReportsTab';
-import { TrafficAnalysisTab } from './components/TrafficAnalysisTab';
 import { SettingsTab } from './components/SettingsTab';
 import { NctLogo } from './components/NctLogo';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(() => ApiClient.getUser());
   const [status, setStatus] = useState<TRexStatus | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'profiles' | 'console' | 'traffic-analysis' | 'reports' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'profiles' | 'console' | 'reports' | 'settings'>('dashboard');
   const [editorTarget, setEditorTarget] = useState<{ dir: string; profile: string }>({
     dir: 'stl',
-    profile: 'imix.yaml',
+    profile: 'imixsitehop.py',
   });
 
   // Fetch status from backend
@@ -89,10 +88,6 @@ export default function App() {
                 onRefreshStatus={fetchStatus}
                 onNavigateToEditor={handleNavigateToEditor}
               />
-            )}
-
-            {activeTab === 'traffic-analysis' && (
-              <TrafficAnalysisTab status={status} />
             )}
 
             {activeTab === 'profiles' && (

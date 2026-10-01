@@ -36,7 +36,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Directory & Profile selection
   const [selectedDir, setSelectedDir] = useState<'cap2' | 'stl' | 'astf' | 'avl'>('stl');
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<string>('imixsitehop.yaml');
+  const [selectedProfile, setSelectedProfile] = useState<string>('imixsitehop.py');
 
   // Multiplier presets
   const multiplierPresets: Record<string, { label: string; value: string }> = {
@@ -78,8 +78,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         if (!isMounted) return;
         const dirProfiles = res.profiles[selectedDir] || [];
         setProfiles(dirProfiles);
-        if (dirProfiles.length > 0 && !dirProfiles.some((p) => p.name === selectedProfile)) {
-          setSelectedProfile(dirProfiles[0].name);
+        if (dirProfiles.length > 0) {
+          const preferred = dirProfiles.find((p) => p.name === 'imixsitehop.py' || p.name === 'imixsitehop.yaml');
+          if (preferred && (!selectedProfile || selectedProfile.startsWith('imix'))) {
+            setSelectedProfile(preferred.name);
+          } else if (!dirProfiles.some((p) => p.name === selectedProfile)) {
+            setSelectedProfile(dirProfiles[0].name);
+          }
         }
       })
       .catch((err) => {
