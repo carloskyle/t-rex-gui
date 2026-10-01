@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Activity, Maximize2, Zap, ArrowLeftRight, Layers, HelpCircle } from 'lucide-react';
+import { Activity, Maximize2, Zap, ArrowLeftRight, Layers } from 'lucide-react';
 import { ChartHistoryPoint } from '../types';
 
 export type ChartViewMode = 'aggregate' | 'port0' | 'port1' | 'both';
@@ -143,8 +143,8 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
     const timeStep = graphWidth / (timeLabels.length - 1);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#64748b'; // slate-500
-    ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+    ctx.fillStyle = '#94a3b8'; // slate-400 for WCAG AA
+    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
 
     timeLabels.forEach((label, idx) => {
       const x = paddingLeft + idx * timeStep;
@@ -159,7 +159,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
 
     // If insufficient data, show waiting prompt
     if (history.length < 2) {
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = '#94a3b8';
       ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -319,72 +319,115 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
     setHoverPos(null);
   };
 
+  // Keyboard navigation on canvas for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (history.length < 2) return;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setHoverIndex((prev) => {
+        const next = prev === null ? 0 : Math.min(history.length - 1, prev + 1);
+        return next;
+      });
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setHoverIndex((prev) => {
+        const next = prev === null ? history.length - 1 : Math.max(0, prev - 1);
+        return next;
+      });
+    } else if (e.key === 'Escape') {
+      setHoverIndex(null);
+      setHoverPos(null);
+    }
+  };
+
   const hoveredData = hoverIndex !== null && hoverIndex >= 0 && hoverIndex < history.length ? history[hoverIndex] : null;
 
   return (
-    <div ref={containerRef} className="relative w-full rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl backdrop-blur-sm">
+    <div
+      ref={containerRef}
+      role="region"
+      aria-label="Gráfico de Throughput de Rede em Tempo Real"
+      className="relative w-full rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl backdrop-blur-sm"
+    >
       {/* Top Bar: View Mode Switcher and Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800/80">
-        {/* View Mode Tabs */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+        {/* View Mode Tabs (Accessible Tablist) */}
+        <div
+          className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs"
+          role="tablist"
+          aria-label="Modo de visualização do gráfico"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={viewMode === 'aggregate'}
             onClick={() => setViewMode('aggregate')}
-            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
               viewMode === 'aggregate'
                 ? 'bg-sky-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
+            <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Full-Duplex Agregado</span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={viewMode === 'port0'}
             onClick={() => setViewMode('port0')}
-            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
               viewMode === 'port0'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <Layers className="h-3.5 w-3.5 text-emerald-400" />
+            <Layers className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
             <span>Porta 0 (Tx/Rx)</span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={viewMode === 'port1'}
             onClick={() => setViewMode('port1')}
-            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
               viewMode === 'port1'
                 ? 'bg-cyan-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <Layers className="h-3.5 w-3.5 text-cyan-400" />
+            <Layers className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
             <span>Porta 1 (Tx/Rx)</span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={viewMode === 'both'}
             onClick={() => setViewMode('both')}
-            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
               viewMode === 'both'
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
             title="Visualizar as 4 curvas simultâneas (Port 0 Tx/Rx e Port 1 Tx/Rx)"
           >
-            <Activity className="h-3.5 w-3.5 text-amber-400" />
+            <Activity className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
             <span>4 Vias (Simultâneo)</span>
           </button>
         </div>
 
         {/* Dynamic Scale Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1 rounded-lg text-xs font-mono">
-          <span className="text-[10px] text-slate-500 px-1 font-sans flex items-center gap-1">
-            <Maximize2 className="h-3 w-3 text-sky-400" />
+        <div
+          className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-lg text-xs font-mono"
+          role="group"
+          aria-label="Escala do gráfico em gigabits por segundo"
+        >
+          <span className="text-[10px] text-slate-400 px-1 font-sans flex items-center gap-1">
+            <Maximize2 className="h-3 w-3 text-sky-400" aria-hidden="true" />
             Escala:
           </span>
 
@@ -392,11 +435,12 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
             <button
               key={String(sc)}
               type="button"
+              aria-pressed={scaleMode === sc}
               onClick={() => setScaleMode(sc)}
-              className={`px-2 py-0.5 text-[11px] rounded transition cursor-pointer font-bold ${
+              className={`min-h-[32px] px-2 py-0.5 text-[11px] rounded transition cursor-pointer font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                 scaleMode === sc
                   ? 'bg-sky-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
               {sc === 'auto' ? 'Auto' : `${sc}G`}
@@ -406,33 +450,37 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       </div>
 
       {/* Real-time Telemetry Badges according to active viewMode */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs font-mono">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs font-mono"
+        role="status"
+        aria-live="polite"
+      >
         <div className="flex flex-wrap items-center gap-3">
           {viewMode === 'aggregate' && (
             <>
               {/* Total Tx */}
               <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Tx Total (P0+P1):</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Tx Total (P0+P1):</span>
                   <span className="font-bold text-emerald-400 text-sm">{latestPoint.txGbps.toFixed(2)}</span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
 
               {/* Total Rx */}
               <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="h-2 w-2 rounded-full bg-cyan-400" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Rx Total (P0+P1):</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Rx Total (P0+P1):</span>
                   <span className="font-bold text-cyan-400 text-sm">{latestPoint.rxGbps.toFixed(2)}</span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
 
               {/* Aggregate Full-Duplex Throughput */}
               <div className="hidden md:flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 text-[11px]">
-                <ArrowLeftRight className="h-3 w-3 text-sky-400" />
+                <ArrowLeftRight className="h-3 w-3 text-sky-400" aria-hidden="true" />
                 <span>Full-Duplex Total:</span>
                 <span className="font-bold text-sky-300">{(latestPoint.txGbps + latestPoint.rxGbps).toFixed(2)} {unit}</span>
               </div>
@@ -442,24 +490,24 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
           {viewMode === 'port0' && (
             <>
               <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Porta 0 Tx:</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Porta 0 Tx:</span>
                   <span className="font-bold text-emerald-400 text-sm">
                     {(latestPoint.p0TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
                   </span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="h-2 w-2 rounded-full bg-cyan-400" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Porta 0 Rx:</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Porta 0 Rx:</span>
                   <span className="font-bold text-cyan-400 text-sm">
                     {(latestPoint.p0RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
                   </span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
             </>
@@ -468,24 +516,24 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
           {viewMode === 'port1' && (
             <>
               <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Porta 1 Tx:</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Porta 1 Tx:</span>
                   <span className="font-bold text-emerald-400 text-sm">
                     {(latestPoint.p1TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
                   </span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="h-2 w-2 rounded-full bg-cyan-400" aria-hidden="true" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-slate-400 text-[11px] font-sans">Porta 1 Rx:</span>
+                  <span className="text-slate-300 text-[11px] font-sans">Porta 1 Rx:</span>
                   <span className="font-bold text-cyan-400 text-sm">
                     {(latestPoint.p1RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
                   </span>
-                  <span className="text-[10px] text-slate-500">{unit}</span>
+                  <span className="text-[10px] text-slate-400">{unit}</span>
                 </div>
               </div>
             </>
@@ -494,36 +542,40 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
           {viewMode === 'both' && (
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
               <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P0 Tx: {(latestPoint.p0TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" /> P0 Tx: {(latestPoint.p0TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
               </span>
               <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-cyan-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P0 Rx: {(latestPoint.p0RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" /> P0 Rx: {(latestPoint.p0RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
               </span>
-              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-amber-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> P1 Tx: {(latestPoint.p1TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" /> P1 Tx: {(latestPoint.p1TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
               </span>
-              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-purple-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" /> P1 Rx: {(latestPoint.p1RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-purple-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" aria-hidden="true" /> P1 Rx: {(latestPoint.p1RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
               </span>
             </div>
           )}
         </div>
 
         {/* Peak Observed */}
-        <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-          <Zap className="h-3.5 w-3.5 text-amber-400" />
+        <div className="flex items-center gap-1.5 text-slate-300 text-[11px]">
+          <Zap className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
           <span>Pico na Vista:</span>
           <span className="font-bold text-amber-300">{peakObserved.toFixed(2)} {unit}</span>
         </div>
       </div>
 
-      {/* Chart Canvas with absolute Tooltip Overlay */}
+      {/* Chart Canvas with accessible keyboard navigation */}
       <div className="relative">
         <canvas
           ref={canvasRef}
+          tabIndex={0}
+          role="img"
+          aria-label={`Gráfico de Throughput em tempo real (${viewMode}). Tx: ${latestPoint.txGbps.toFixed(2)} Gbps, Rx: ${latestPoint.rxGbps.toFixed(2)} Gbps.`}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="w-full h-52 rounded-lg bg-slate-950/80 cursor-crosshair border border-slate-800/60 block"
+          onKeyDown={handleKeyDown}
+          className="w-full h-52 rounded-lg bg-slate-950 cursor-crosshair border border-slate-800 block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         />
 
         {/* Floating Tooltip during Hover */}
@@ -535,22 +587,22 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
               top: `${Math.max(10, hoverPos.y - 85)}px`,
             }}
           >
-            <div className="text-[10px] text-slate-400 pb-1 border-b border-slate-800 mb-1 flex items-center justify-between">
+            <div className="text-[10px] text-slate-300 pb-1 border-b border-slate-800 mb-1 flex items-center justify-between">
               <span>Instante da Amostra</span>
-              <span className="text-slate-500">{new Date(hoveredData.time).toLocaleTimeString()}</span>
+              <span className="text-slate-400">{new Date(hoveredData.time).toLocaleTimeString()}</span>
             </div>
 
             {viewMode === 'aggregate' && (
               <>
                 <div className="flex items-center justify-between gap-3 text-emerald-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Tx Total:
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" /> Tx Total:
                   </span>
                   <span className="font-bold">{hoveredData.txGbps.toFixed(3)} Gbps</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-cyan-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> Rx Total:
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" /> Rx Total:
                   </span>
                   <span className="font-bold">{hoveredData.rxGbps.toFixed(3)} Gbps</span>
                 </div>
@@ -565,13 +617,13 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
               <>
                 <div className="flex items-center justify-between gap-3 text-emerald-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P0 Tx:
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" /> P0 Tx:
                   </span>
                   <span className="font-bold">{(hoveredData.p0TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-cyan-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P0 Rx:
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" /> P0 Rx:
                   </span>
                   <span className="font-bold">{(hoveredData.p0RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
                 </div>
@@ -582,13 +634,13 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
               <>
                 <div className="flex items-center justify-between gap-3 text-emerald-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P1 Tx:
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" /> P1 Tx:
                   </span>
                   <span className="font-bold">{(hoveredData.p1TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-cyan-400">
                   <span className="text-[11px] font-sans flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P1 Rx:
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" /> P1 Rx:
                   </span>
                   <span className="font-bold">{(hoveredData.p1RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
                 </div>
@@ -605,11 +657,11 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
                   <span>P0 Rx:</span>
                   <span className="font-bold">{(hoveredData.p0RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
                 </div>
-                <div className="flex justify-between gap-2 text-amber-400">
+                <div className="flex justify-between gap-2 text-amber-300">
                   <span>P1 Tx:</span>
                   <span className="font-bold">{(hoveredData.p1TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
                 </div>
-                <div className="flex justify-between gap-2 text-purple-400">
+                <div className="flex justify-between gap-2 text-purple-300">
                   <span>P1 Rx:</span>
                   <span className="font-bold">{(hoveredData.p1RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
                 </div>
@@ -620,17 +672,17 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       </div>
 
       {/* Footer bar: Details & Active scale label */}
-      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-300">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="flex items-center gap-1 text-slate-400 font-sans">
-            <ArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-slate-300">Tráfego Bidirecional Simétrico:</span>
-            <span>Porta 0 (Tx ⇄ Rx) e Porta 1 (Tx ⇄ Rx)</span>
+          <span className="flex items-center gap-1 font-sans">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+            <span className="text-slate-200">Tráfego Bidirecional Simétrico:</span>
+            <span className="text-slate-300">Porta 0 (Tx ⇄ Rx) e Porta 1 (Tx ⇄ Rx)</span>
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span>Escala do Eixo Y:</span>
+          <span className="text-slate-400">Escala do Eixo Y:</span>
           <span className="font-bold text-sky-400">
             {effectiveMaxGbps.toFixed(effectiveMaxGbps < 10 ? 1 : 0)} Gbps
             {scaleMode === 'auto' && ' (Auto-dinâmica)'}

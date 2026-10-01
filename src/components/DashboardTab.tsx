@@ -33,12 +33,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   onRefreshStatus,
   onNavigateToEditor,
 }) => {
-  // Legacy PHP matching parameters
+  // Directory & Profile selection
   const [selectedDir, setSelectedDir] = useState<'cap2' | 'stl' | 'astf' | 'avl'>('stl');
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>('imix.yaml');
 
-  // Multiplier presets matching PHP
+  // Multiplier presets
   const multiplierPresets: Record<string, { label: string; value: string }> = {
     stl_100g: { label: 'STL 100G (94.75 Gbps)', value: '94.75gbps' },
     stl_50g: { label: 'STL 50G (50 Gbps)', value: '50gbps' },
@@ -49,7 +49,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     custom: { label: 'Personalizado', value: '' },
   };
 
-  // Duration presets matching PHP
+  // Duration presets
   const durationPresets: Record<string, { label: string; value: string }> = {
     d_10: { label: '10 Segundos', value: '10' },
     d_30: { label: '30 Segundos', value: '30' },
@@ -174,137 +174,140 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const isRunning = status?.isRunning ?? false;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="region" aria-label="Painel de Controle e Telemetria do TRex">
       {/* Action Notification Banner */}
       {actionFeedback && (
         <div
-          className={`flex items-center justify-between rounded-xl border p-4 text-sm ${
+          role="alert"
+          aria-live="assertive"
+          className={`flex items-center justify-between rounded-xl border p-4 text-sm shadow-sm transition ${
             actionFeedback.type === 'success'
-              ? 'border-[#50fa7b]/40 bg-[#50fa7b]/10 text-[#50fa7b]'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
               : actionFeedback.type === 'error'
-              ? 'border-[#ff5555]/40 bg-[#ff5555]/10 text-[#ff5555]'
-              : 'border-[#8be9fd]/40 bg-[#8be9fd]/10 text-[#8be9fd]'
+              ? 'border-red-500/40 bg-red-500/10 text-red-300'
+              : 'border-sky-500/40 bg-sky-500/10 text-sky-300'
           }`}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {actionFeedback.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden="true" />
             ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" aria-hidden="true" />
             )}
-            <span className="font-mono text-xs">{actionFeedback.message}</span>
+            <span className="font-mono text-xs leading-relaxed">{actionFeedback.message}</span>
           </div>
           <button
+            type="button"
             onClick={() => setActionFeedback(null)}
-            className="text-xs opacity-75 hover:opacity-100 cursor-pointer"
+            className="text-xs font-semibold px-2 py-1 rounded hover:bg-white/10 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
           >
             Fechar
           </button>
         </div>
       )}
 
-      {/* Real-time Telemetry Metrics Grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Real-time Telemetry Metrics Grid (WCAG AA Contrast Compliant) */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" role="group" aria-label="Métricas de Telemetria em Tempo Real">
         {/* Tx Gbps */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Vazão de Transmissão Tx">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">Tx Throughput</span>
-            <ArrowUpRight className="h-4 w-4 text-[#50fa7b]" />
+            <ArrowUpRight className="h-4 w-4 text-emerald-400" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-[#50fa7b]">
+            <span className="text-2xl font-bold font-mono text-emerald-400">
               {status?.metrics.txGbps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-[#6272a4]">Gbps</span>
+            <span className="text-xs text-slate-400">Gbps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             {(status?.metrics.txBps ? (status.metrics.txBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
         {/* Rx Gbps */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Vazão de Recepção Rx">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">Rx Throughput</span>
-            <ArrowDownLeft className="h-4 w-4 text-[#bd93f9]" />
+            <ArrowDownLeft className="h-4 w-4 text-cyan-400" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-[#bd93f9]">
+            <span className="text-2xl font-bold font-mono text-cyan-400">
               {status?.metrics.rxGbps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-[#6272a4]">Gbps</span>
+            <span className="text-xs text-slate-400">Gbps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             {(status?.metrics.rxBps ? (status.metrics.rxBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
         {/* Packet Rate Tx */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Taxa de Pacotes por Segundo">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">Tx Packet Rate</span>
-            <Gauge className="h-4 w-4 text-[#8be9fd]" />
+            <Gauge className="h-4 w-4 text-sky-400" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-[#8be9fd]">
+            <span className="text-2xl font-bold font-mono text-sky-300">
               {status?.metrics.txMpps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-[#6272a4]">Mpps</span>
+            <span className="text-xs text-slate-400">Mpps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             Rx: {status?.metrics.rxMpps.toFixed(2) ?? '0.00'} Mpps
           </div>
         </div>
 
         {/* Packet Drop Rate */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Taxa de Descarte de Pacotes">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">Taxa de Perda</span>
-            <AlertTriangle className="h-4 w-4 text-[#ffb86c]" />
+            <AlertTriangle className="h-4 w-4 text-amber-400" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span
               className={`text-2xl font-bold font-mono ${
-                (status?.metrics.dropRatePercent || 0) > 0.01 ? 'text-[#ff5555]' : 'text-[#50fa7b]'
+                (status?.metrics.dropRatePercent || 0) > 0.01 ? 'text-red-400 font-bold' : 'text-emerald-400'
               }`}
             >
               {(status?.metrics.dropRatePercent ?? 0).toFixed(4)}%
             </span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             Jitter: {(status?.metrics.jitterMs ?? 0).toFixed(3)} ms
           </div>
         </div>
 
         {/* Latency Avg */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Latência Média">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">Latência Média</span>
-            <Clock className="h-4 w-4 text-[#ff79c6]" />
+            <Clock className="h-4 w-4 text-purple-400" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-[#ff79c6]">
+            <span className="text-2xl font-bold font-mono text-purple-300">
               {status?.metrics.latencyAvgMs ? status.metrics.latencyAvgMs.toFixed(3) : '0.018'}
             </span>
-            <span className="text-xs text-[#6272a4]">ms</span>
+            <span className="text-xs text-slate-400">ms</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             Max: {status?.metrics.latencyMaxMs ? status.metrics.latencyMaxMs.toFixed(3) : '0.040'} ms
           </div>
         </div>
 
         {/* CPU DPDK Cores */}
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[#6272a4]">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Uso de CPU dos Cores DPDK">
+          <div className="flex items-center justify-between text-slate-300">
             <span className="text-xs font-medium">DPDK CPU</span>
-            <Cpu className="h-4 w-4 text-[#f1fa8c]" />
+            <Cpu className="h-4 w-4 text-amber-300" aria-hidden="true" />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-[#f1fa8c]">
+            <span className="text-2xl font-bold font-mono text-amber-300">
               {(status?.metrics.cpuUtilPercent ?? 0).toFixed(1)}%
             </span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-[#6272a4]">
+          <div className="mt-1 text-[11px] font-mono text-slate-400">
             TRex Auto Cores
           </div>
         </div>
@@ -314,62 +317,63 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left Column: TRex Command Deck */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#44475a] pb-3 mb-4">
-              <h2 className="text-sm font-bold text-[#f8f8f2] flex items-center gap-2">
-                <Sliders className="h-4 w-4 text-[#bd93f9]" />
-                Painel de Configuração do Tráfego
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Sliders className="h-4 w-4 text-sky-400" aria-hidden="true" />
+                <span>Painel de Configuração do Tráfego</span>
               </h2>
-              <span className="text-[11px] font-mono text-[#6272a4]">
+              <span className="text-[11px] font-mono text-slate-400">
                 TRex 10.69.70.20
               </span>
             </div>
 
             <div className="space-y-4">
               {/* Directory selection (cap2, stl, astf, avl) */}
-              <div>
-                <label className="block text-xs font-medium text-[#f8f8f2] mb-1.5 flex items-center gap-1.5">
-                  <Folder className="h-3.5 w-3.5 text-[#ffb86c]" />
-                  Diretório do TRex (/opt/trex/v3.08/)
-                </label>
+              <fieldset>
+                <legend className="block text-xs font-medium text-slate-200 mb-1.5 flex items-center gap-1.5">
+                  <Folder className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+                  <span>Diretório do TRex (/opt/trex/v3.08/)</span>
+                </legend>
                 <div className="grid grid-cols-4 gap-2">
                   {(['cap2', 'stl', 'astf', 'avl'] as const).map((dir) => (
                     <button
                       key={dir}
                       type="button"
                       onClick={() => setSelectedDir(dir)}
-                      className={`py-2 px-3 text-xs font-mono font-medium rounded-lg border text-center transition cursor-pointer ${
+                      className={`min-h-[40px] py-2 px-3 text-xs font-mono font-medium rounded-lg border text-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         selectedDir === dir
-                          ? 'border-[#bd93f9] bg-[#bd93f9]/20 text-[#bd93f9] shadow-sm font-bold'
-                          : 'border-[#44475a] bg-[#1e1f29] text-[#6272a4] hover:text-[#f8f8f2]'
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 shadow-sm font-bold'
+                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
                       }`}
                     >
                       {dir}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {/* Profile Selection */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-[#f8f8f2] flex items-center gap-1.5">
-                    <FileCode className="h-3.5 w-3.5 text-[#50fa7b]" />
-                    Perfil de Tráfego (.yaml / .py)
+                  <label htmlFor="profile-select" className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <FileCode className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                    <span>Perfil de Tráfego (.yaml / .py)</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => onNavigateToEditor(selectedDir, selectedProfile)}
-                    className="text-[11px] text-[#8be9fd] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded px-1"
                   >
                     <span>Editar no Editor</span>
-                    <ArrowUpRight className="h-3 w-3" />
+                    <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </div>
                 <select
+                  id="profile-select"
                   value={selectedProfile}
                   onChange={(e) => setSelectedProfile(e.target.value)}
-                  className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-2 text-sm font-mono text-[#f8f8f2] focus:border-[#bd93f9] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[42px]"
                 >
                   {profiles.length === 0 ? (
                     <option value="">Nenhum perfil encontrado</option>
@@ -384,21 +388,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               </div>
 
               {/* Multiplier / Rate */}
-              <div>
-                <label className="block text-xs font-medium text-[#f8f8f2] mb-1.5 flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-[#f1fa8c]" />
-                  Multiplicador de Taxa (-m)
-                </label>
+              <fieldset>
+                <legend className="block text-xs font-medium text-slate-200 mb-1.5 flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+                  <span>Multiplicador de Taxa (-m)</span>
+                </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {Object.entries(multiplierPresets).map(([key, item]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setMultiplierChoice(key)}
-                      className={`p-2 text-xs rounded-lg border text-left transition cursor-pointer ${
+                      className={`p-2.5 min-h-[40px] text-xs rounded-lg border text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         multiplierChoice === key
-                          ? 'border-[#f1fa8c] bg-[#f1fa8c]/15 text-[#f1fa8c] font-semibold'
-                          : 'border-[#44475a] bg-[#1e1f29] text-[#6272a4] hover:text-[#f8f8f2]'
+                          ? 'border-amber-400 bg-amber-400/15 text-amber-200 font-semibold'
+                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
                       }`}
                     >
                       <div className="font-mono text-[11px]">{item.label}</div>
@@ -408,24 +412,26 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
                 {multiplierChoice === 'custom' && (
                   <div className="mt-2">
+                    <label htmlFor="multiplier-custom" className="sr-only">Taxa personalizada</label>
                     <input
+                      id="multiplier-custom"
                       type="text"
                       value={multiplierCustom}
                       onChange={(e) => setMultiplierCustom(e.target.value)}
                       placeholder="Ex: 25gbps, 150000, 2"
-                      className="w-full rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-2 text-xs font-mono text-[#f8f8f2] focus:border-[#f1fa8c] focus:outline-none"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[38px]"
                     />
                   </div>
                 )}
-              </div>
+              </fieldset>
 
               {/* Duration (-d) */}
-              <div>
+              <fieldset>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-sky-400" />
-                    Duração da Injeção (-d)
-                  </label>
+                  <legend className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+                    <span>Duração da Injeção (-d)</span>
+                  </legend>
                   <span className="text-[11px] font-mono text-sky-300 font-bold bg-sky-950/60 border border-sky-800/80 px-2 py-0.5 rounded">
                     Ativo: {getEffectiveDuration()}s {parseInt(getEffectiveDuration(), 10) >= 60 ? `(${(parseInt(getEffectiveDuration(), 10) / 60).toFixed(1)} min)` : ''}
                   </span>
@@ -437,10 +443,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       key={key}
                       type="button"
                       onClick={() => setDurationChoice(key)}
-                      className={`p-2 text-xs rounded-lg border text-center transition cursor-pointer ${
+                      className={`p-2.5 min-h-[40px] text-xs rounded-lg border text-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         durationChoice === key
                           ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
-                          : 'border-slate-800 bg-slate-900/90 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
                       }`}
                     >
                       <div className="font-mono text-[11px]">{item.label}</div>
@@ -450,22 +456,24 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
                 {durationChoice === 'custom' && (
                   <div className="mt-2">
+                    <label htmlFor="duration-custom" className="sr-only">Duração personalizada em segundos</label>
                     <input
+                      id="duration-custom"
                       type="number"
                       value={durationCustom}
                       onChange={(e) => setDurationCustom(e.target.value)}
                       placeholder="Ex: 300"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[38px]"
                     />
                   </div>
                 )}
-              </div>
+              </fieldset>
 
               {/* Action Buttons matching the PHP functionalities */}
               <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                <div className="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                <div className="text-[11px] font-medium text-slate-300 flex items-center justify-between">
                   <span>Ações de Injeção e Controle do Servidor:</span>
-                  <span className="text-[10px] font-mono text-emerald-400">
+                  <span className="text-[10px] font-mono text-emerald-400 font-semibold">
                     Duração travada: {getEffectiveDuration()}s
                   </span>
                 </div>
@@ -476,9 +484,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 py-2.5 min-h-[42px] text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
-                    <Play className="h-4 w-4 fill-current" />
+                    <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                     <span>Iniciar Server 1 ({getEffectiveDuration()}s)</span>
                   </button>
 
@@ -487,9 +495,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test2')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 py-2.5 min-h-[42px] text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
-                    <Play className="h-4 w-4 fill-current" />
+                    <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                     <span>Iniciar Server 2 ({getEffectiveDuration()}s)</span>
                   </button>
                 </div>
@@ -500,9 +508,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={!isRunning || isSubmitting !== null}
                     onClick={() => handleAction('stop')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-[#ff5555]/50 bg-[#ff5555]/15 p-2 text-xs font-semibold text-[#ff5555] hover:bg-[#ff5555]/25 active:scale-95 transition disabled:opacity-30 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/15 p-2 min-h-[40px] text-xs font-semibold text-red-300 hover:bg-red-500/25 active:scale-95 transition disabled:opacity-30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
-                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                     <span>Stop</span>
                   </button>
 
@@ -511,9 +519,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('stop_server')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-[#ff5555]/30 bg-[#1e1f29] p-2 text-xs font-medium text-[#ff5555] hover:bg-[#ff5555]/10 active:scale-95 transition disabled:opacity-30 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-red-400 hover:bg-red-500/10 active:scale-95 transition disabled:opacity-30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
-                    <PowerOff className="h-3.5 w-3.5" />
+                    <PowerOff className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>Stop Serv</span>
                   </button>
 
@@ -522,9 +530,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('stats')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-xs font-medium text-[#f8f8f2] hover:bg-[#44475a] active:scale-95 transition cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-slate-100 hover:bg-slate-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                   >
-                    <BarChart2 className="h-3.5 w-3.5 text-[#bd93f9]" />
+                    <BarChart2 className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
                     <span>Stats</span>
                   </button>
 
@@ -533,9 +541,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('clear')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-[#44475a] bg-[#1e1f29] p-2 text-xs font-medium text-[#f8f8f2] hover:bg-[#44475a] active:scale-95 transition cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-slate-100 hover:bg-slate-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                   >
-                    <RefreshCw className="h-3.5 w-3.5 text-[#8be9fd]" />
+                    <RefreshCw className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
                     <span>Clear</span>
                   </button>
                 </div>
@@ -544,9 +552,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Dynamic DPDK Charts & Physical Ports */}
+        {/* Right Column: Real-time Throughput Chart & Port Status Cards */}
         <div className="lg:col-span-6 space-y-6">
-          {/* Real-time Dynamic Throughput Chart */}
           <ThroughputChart
             history={chartHistory}
             unit="Gbps"
@@ -555,11 +562,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           />
 
           {/* Port Status Cards */}
-          <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#44475a] pb-3 mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-[#50fa7b]" />
-                Interfaces de Rede DPDK ({status?.ports[0]?.model ? status.ports[0].model.split(' ')[0] : 'Hardware Detectado'})
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                <span>Interfaces de Rede DPDK ({status?.ports[0]?.model ? status.ports[0].model.split(' ')[0] : 'Hardware Detectado'})</span>
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -573,11 +580,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     }
                   }}
                   title="Detectar placas instaladas no servidor (/etc/trex_cfg.yaml e PCI)"
-                  className="rounded bg-[#1e1f29] border border-[#44475a] px-2 py-0.5 text-[10px] text-[#8be9fd] hover:text-[#f8f8f2] transition cursor-pointer"
+                  className="rounded bg-slate-950 border border-slate-700 px-2.5 py-1 text-[11px] text-sky-300 hover:text-white hover:border-slate-600 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                 >
                   Re-escanear Hardware
                 </button>
-                <span className="text-[11px] font-mono text-[#50fa7b]">DPDK Active</span>
+                <span className="text-[11px] font-mono text-emerald-400 font-semibold">DPDK Active</span>
               </div>
             </div>
 
@@ -592,7 +599,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 return (
                   <div
                     key={port.id}
-                    className="rounded-lg border border-slate-700/80 bg-slate-900/90 p-3.5 text-xs font-mono space-y-2 shadow-sm"
+                    className="rounded-lg border border-slate-700/80 bg-slate-950 p-3.5 text-xs font-mono space-y-2 shadow-sm"
                   >
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="flex items-center gap-1.5 truncate max-w-[190px]">
@@ -634,12 +641,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       <div>
                         <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
                           <span className="flex items-center gap-1 text-emerald-400 font-sans">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
                             Tx (Injeção):
                           </span>
                           <span className="text-emerald-400 font-bold">{txGbps.toFixed(2)} Gbps</span>
                         </div>
-                        <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
                           <div
                             className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(txPercent, txGbps > 0 ? 3 : 0)}%` }}
@@ -650,12 +657,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       <div>
                         <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
                           <span className="flex items-center gap-1 text-cyan-400 font-sans">
-                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" />
                             Rx (Recepção):
                           </span>
                           <span className="text-cyan-400 font-bold">{rxGbps.toFixed(2)} Gbps</span>
                         </div>
-                        <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
                           <div
                             className="bg-cyan-500 h-full rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(rxPercent, rxGbps > 0 ? 3 : 0)}%` }}
@@ -665,8 +672,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </div>
 
                     <div className="flex justify-between text-slate-400 text-[10px] border-t border-slate-800/80 pt-1.5">
-                      <span>Tx: <strong className="text-slate-300 font-normal">{port.opackets.toLocaleString()} pkts</strong></span>
-                      <span>Rx: <strong className="text-slate-300 font-normal">{port.ipackets.toLocaleString()} pkts</strong></span>
+                      <span>Tx: <strong className="text-slate-200 font-normal">{port.opackets.toLocaleString()} pkts</strong></span>
+                      <span>Rx: <strong className="text-slate-200 font-normal">{port.ipackets.toLocaleString()} pkts</strong></span>
                     </div>
                   </div>
                 );
