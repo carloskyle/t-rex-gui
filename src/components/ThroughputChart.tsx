@@ -566,7 +566,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       </div>
 
       {/* Chart Canvas with accessible keyboard navigation */}
-      <div className="relative">
+      <div className="relative rounded-xl border border-slate-700/80 bg-slate-950 p-1 shadow-inner">
         <canvas
           ref={canvasRef}
           tabIndex={0}
@@ -575,8 +575,15 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onKeyDown={handleKeyDown}
-          className="w-full h-52 rounded-lg bg-slate-950 cursor-crosshair border border-slate-800 block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+          className="w-full h-52 rounded-lg bg-slate-950 cursor-crosshair block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         />
+
+        {/* Hover hint badge */}
+        {!hoveredData && history.length > 0 && (
+          <div className="pointer-events-none absolute bottom-2 right-3 rounded bg-slate-900/80 border border-slate-700/50 px-2 py-0.5 text-[10px] text-slate-400 font-sans backdrop-blur-sm">
+            Passe o mouse ou use ← → para inspecionar pontos
+          </div>
+        )}
 
         {/* Floating Tooltip during Hover */}
         {hoveredData && hoverPos && (

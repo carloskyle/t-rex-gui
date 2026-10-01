@@ -300,107 +300,108 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
           </div>
 
           {/* Section: Port Matrix (Port 0 | Port 1 | Total) */}
-          <div className="rounded border border-emerald-500/20 bg-slate-950/80 p-3 overflow-x-auto">
-            <div className="text-emerald-300 font-bold border-b border-emerald-500/30 pb-1 mb-2">
-              -- PORT STATISTICS MATRIX --
+          <div className="rounded-xl border border-emerald-500/30 bg-[#080c14] p-4 overflow-x-auto shadow-xl">
+            <div className="text-emerald-300 font-bold border-b border-emerald-500/40 pb-2 mb-3 flex items-center justify-between">
+              <span className="tracking-wider">-- PORT STATISTICS MATRIX (DPDK MLX5 / VFIO) --</span>
+              <span className="text-[10px] text-slate-400 font-normal">Colunas alinhadas • Amostragem 1.0s</span>
             </div>
 
             <table className="w-full text-left font-mono text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-1 px-2 font-normal">Metric</th>
-                  <th className="py-1 px-2 font-bold text-emerald-400">Port 0 (NIC 0)</th>
-                  <th className="py-1 px-2 font-bold text-cyan-400">Port 1 (NIC 1)</th>
-                  <th className="py-1 px-2 font-bold text-white">Total (Agregado)</th>
+                <tr className="border-b-2 border-emerald-500/40 text-slate-400">
+                  <th className="py-2 px-3 font-semibold text-slate-300 uppercase tracking-wider text-[11px] min-w-[180px]">Métrica / Contador</th>
+                  <th className="py-2 px-3 font-bold text-emerald-400 text-right min-w-[150px]">Porta 0 (NIC 0)</th>
+                  <th className="py-2 px-3 font-bold text-cyan-400 text-right min-w-[150px]">Porta 1 (NIC 1)</th>
+                  <th className="py-2 px-3 font-bold text-white text-right min-w-[160px]">Total Agregado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-900">
+              <tbody className="divide-y divide-slate-800/60">
                 {/* Hardware Identity */}
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">Hardware / Driver</td>
-                  <td className="py-1 px-2 text-slate-300">{port0?.driver || 'mlx5_core'}</td>
-                  <td className="py-1 px-2 text-slate-300">{port1?.driver || 'mlx5_core'}</td>
-                  <td className="py-1 px-2 text-slate-400">{port0?.model?.split(' ')[0] || 'Mellanox'}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Hardware / Driver</td>
+                  <td className="py-2 px-3 text-slate-200 text-right font-sans text-[11px]">{port0?.driver || 'mlx5_core'}</td>
+                  <td className="py-2 px-3 text-slate-200 text-right font-sans text-[11px]">{port1?.driver || 'mlx5_core'}</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-sans text-[11px]">{port0?.model?.split(' ')[0] || 'Mellanox 100GbE'}</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">PCIe Address</td>
-                  <td className="py-1 px-2 text-amber-300">{port0?.pciAddress || '0000:03:00.0'}</td>
-                  <td className="py-1 px-2 text-amber-300">{port1?.pciAddress || '0000:03:00.1'}</td>
-                  <td className="py-1 px-2 text-slate-400">Dual PCIe Gen3/4</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">PCIe Address</td>
+                  <td className="py-2 px-3 text-amber-300 text-right font-mono">{port0?.pciAddress || '0000:03:00.0'}</td>
+                  <td className="py-2 px-3 text-amber-300 text-right font-mono">{port1?.pciAddress || '0000:03:00.1'}</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-sans text-[11px]">Dual PCIe Gen3/4 x16</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">Link Status</td>
-                  <td className="py-1 px-2 text-emerald-400 font-bold">UP (10 Gb/s)</td>
-                  <td className="py-1 px-2 text-emerald-400 font-bold">UP (10 Gb/s)</td>
-                  <td className="py-1 px-2 text-emerald-300">20 Gbps Full-Duplex</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Link Status</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold text-right">UP (10 Gb/s)</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold text-right">UP (10 Gb/s)</td>
+                  <td className="py-2 px-3 text-emerald-300 font-semibold text-right">20 Gbps Full-Duplex</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">State</td>
-                  <td className="py-1 px-2 text-emerald-300">{isRunning ? 'TRANSMITTING' : 'IDLE'}</td>
-                  <td className="py-1 px-2 text-cyan-300">{isRunning ? 'TRANSMITTING' : 'IDLE'}</td>
-                  <td className="py-1 px-2 text-slate-400">SYNCHRONIZED</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Estado Operacional</td>
+                  <td className="py-2 px-3 text-emerald-300 text-right font-bold">{isRunning ? 'TRANSMITTING' : 'IDLE'}</td>
+                  <td className="py-2 px-3 text-cyan-300 text-right font-bold">{isRunning ? 'TRANSMITTING' : 'IDLE'}</td>
+                  <td className="py-2 px-3 text-sky-400 text-right font-bold">SYNCHRONIZED</td>
                 </tr>
 
                 {/* Throughput */}
-                <tr className="bg-slate-900/40 text-slate-200">
-                  <td className="py-1 px-2 font-bold text-emerald-400">Tx bps (L2)</td>
-                  <td className="py-1 px-2 font-bold text-emerald-400">{formatRateBps(p0TxBps)}</td>
-                  <td className="py-1 px-2 font-bold text-emerald-400">{formatRateBps(p1TxBps)}</td>
-                  <td className="py-1 px-2 font-bold text-emerald-300">{formatRateBps(totalTxBps)}</td>
+                <tr className="bg-emerald-950/20 hover:bg-emerald-950/30 transition">
+                  <td className="py-2 px-3 font-bold text-emerald-400">Tx Throughput (L2 Payload)</td>
+                  <td className="py-2 px-3 font-bold text-emerald-400 text-right font-mono">{formatRateBps(p0TxBps)}</td>
+                  <td className="py-2 px-3 font-bold text-emerald-400 text-right font-mono">{formatRateBps(p1TxBps)}</td>
+                  <td className="py-2 px-3 font-bold text-emerald-300 text-right font-mono">{formatRateBps(totalTxBps)}</td>
                 </tr>
-                <tr className="bg-slate-900/40 text-slate-200">
-                  <td className="py-1 px-2 font-bold text-cyan-400">Rx bps (L2)</td>
-                  <td className="py-1 px-2 font-bold text-cyan-400">{formatRateBps(p0RxBps)}</td>
-                  <td className="py-1 px-2 font-bold text-cyan-400">{formatRateBps(p1RxBps)}</td>
-                  <td className="py-1 px-2 font-bold text-cyan-300">{formatRateBps(totalRxBps)}</td>
+                <tr className="bg-cyan-950/20 hover:bg-cyan-950/30 transition">
+                  <td className="py-2 px-3 font-bold text-cyan-400">Rx Throughput (L2 Payload)</td>
+                  <td className="py-2 px-3 font-bold text-cyan-400 text-right font-mono">{formatRateBps(p0RxBps)}</td>
+                  <td className="py-2 px-3 font-bold text-cyan-400 text-right font-mono">{formatRateBps(p1RxBps)}</td>
+                  <td className="py-2 px-3 font-bold text-cyan-300 text-right font-mono">{formatRateBps(totalRxBps)}</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">Tx bps (L1 Wire)</td>
-                  <td className="py-1 px-2 text-slate-300">{formatRateBps(p0TxL1Bps)}</td>
-                  <td className="py-1 px-2 text-slate-300">{formatRateBps(p1TxL1Bps)}</td>
-                  <td className="py-1 px-2 text-slate-200">{formatRateBps(totalTxL1Bps)}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Tx Wire-Rate (L1 + 20B Overhead)</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{formatRateBps(p0TxL1Bps)}</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{formatRateBps(p1TxL1Bps)}</td>
+                  <td className="py-2 px-3 text-slate-100 text-right font-mono font-semibold">{formatRateBps(totalTxL1Bps)}</td>
                 </tr>
 
                 {/* Packet Rates */}
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-400">Tx pps</td>
-                  <td className="py-1 px-2 text-sky-300">{formatRatePps(p0TxPps)}</td>
-                  <td className="py-1 px-2 text-sky-300">{formatRatePps(p1TxPps)}</td>
-                  <td className="py-1 px-2 text-sky-200 font-bold">{formatRatePps(totalTxPps)}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-sky-400 font-medium">Taxa de Pacotes Tx (pps)</td>
+                  <td className="py-2 px-3 text-sky-300 text-right font-mono font-bold">{formatRatePps(p0TxPps)}</td>
+                  <td className="py-2 px-3 text-sky-300 text-right font-mono font-bold">{formatRatePps(p1TxPps)}</td>
+                  <td className="py-2 px-3 text-sky-200 font-bold text-right font-mono">{formatRatePps(totalTxPps)}</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-400">Rx pps</td>
-                  <td className="py-1 px-2 text-cyan-300">{formatRatePps(p0RxPps)}</td>
-                  <td className="py-1 px-2 text-cyan-300">{formatRatePps(p1RxPps)}</td>
-                  <td className="py-1 px-2 text-cyan-200 font-bold">{formatRatePps(totalRxPps)}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-cyan-400 font-medium">Taxa de Pacotes Rx (pps)</td>
+                  <td className="py-2 px-3 text-cyan-300 text-right font-mono font-bold">{formatRatePps(p0RxPps)}</td>
+                  <td className="py-2 px-3 text-cyan-300 text-right font-mono font-bold">{formatRatePps(p1RxPps)}</td>
+                  <td className="py-2 px-3 text-cyan-200 font-bold text-right font-mono">{formatRatePps(totalRxPps)}</td>
                 </tr>
 
                 {/* Cumulative Packets */}
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">opackets (Tx total)</td>
-                  <td className="py-1 px-2 text-slate-200">{(port0?.opackets || 0).toLocaleString()}</td>
-                  <td className="py-1 px-2 text-slate-200">{(port1?.opackets || 0).toLocaleString()}</td>
-                  <td className="py-1 px-2 text-white font-bold">{((port0?.opackets || 0) + (port1?.opackets || 0)).toLocaleString()}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Total de Pacotes Tx (opackets)</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{(port0?.opackets || 0).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{(port1?.opackets || 0).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-white font-bold text-right font-mono">{((port0?.opackets || 0) + (port1?.opackets || 0)).toLocaleString()}</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">ipackets (Rx total)</td>
-                  <td className="py-1 px-2 text-slate-200">{(port0?.ipackets || 0).toLocaleString()}</td>
-                  <td className="py-1 px-2 text-slate-200">{(port1?.ipackets || 0).toLocaleString()}</td>
-                  <td className="py-1 px-2 text-white font-bold">{((port0?.ipackets || 0) + (port1?.ipackets || 0)).toLocaleString()}</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Total de Pacotes Rx (ipackets)</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{(port0?.ipackets || 0).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-slate-300 text-right font-mono">{(port1?.ipackets || 0).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-white font-bold text-right font-mono">{((port0?.ipackets || 0) + (port1?.ipackets || 0)).toLocaleString()}</td>
                 </tr>
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">ierrors / oerrors</td>
-                  <td className="py-1 px-2 text-emerald-400">0 / 0</td>
-                  <td className="py-1 px-2 text-emerald-400">0 / 0</td>
-                  <td className="py-1 px-2 text-emerald-400 font-bold">0 / 0 (Zero Loss)</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Erros de Hardware (ierrors / oerrors)</td>
+                  <td className="py-2 px-3 text-emerald-400 text-right font-bold">0 / 0</td>
+                  <td className="py-2 px-3 text-emerald-400 text-right font-bold">0 / 0</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold text-right">0 / 0 (Zero Loss)</td>
                 </tr>
 
                 {/* Frame Size */}
-                <tr className="text-slate-300">
-                  <td className="py-1 px-2 text-slate-500">Avg Frame Size</td>
-                  <td className="py-1 px-2 text-yellow-300">{avgFrameP0} Bytes</td>
-                  <td className="py-1 px-2 text-yellow-300">{avgFrameP1} Bytes</td>
-                  <td className="py-1 px-2 text-yellow-300 font-bold">{avgFrameTotal} Bytes</td>
+                <tr className="hover:bg-slate-900/40 transition">
+                  <td className="py-2 px-3 text-slate-400 font-medium">Tamanho Médio de Quadro (Frame Size)</td>
+                  <td className="py-2 px-3 text-amber-300 text-right font-mono font-semibold">{avgFrameP0} Bytes</td>
+                  <td className="py-2 px-3 text-amber-300 text-right font-mono font-semibold">{avgFrameP1} Bytes</td>
+                  <td className="py-2 px-3 text-amber-300 font-bold text-right font-mono">{avgFrameTotal} Bytes</td>
                 </tr>
               </tbody>
             </table>

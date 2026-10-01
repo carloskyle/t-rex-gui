@@ -202,15 +202,22 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
           </div>
 
           {/* Terminal View */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-4 py-2 text-xs font-mono text-slate-400">
+          <div className="rounded-xl border border-slate-800/90 bg-[#0a0d14] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-800/90 bg-[#0d1117] px-4 py-2.5 text-xs font-mono text-slate-400">
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500" aria-hidden="true" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" aria-hidden="true" />
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                <span className="ml-2 text-slate-200">root@trex-host-10-69-70-20:/opt/trex/v3.08#</span>
+                <span className="h-3 w-3 rounded-full bg-red-500/80 border border-red-400/40" aria-hidden="true" />
+                <span className="h-3 w-3 rounded-full bg-amber-400/80 border border-amber-300/40" aria-hidden="true" />
+                <span className="h-3 w-3 rounded-full bg-emerald-400/80 border border-emerald-300/40" aria-hidden="true" />
+                <span className="ml-2.5 text-slate-300 font-semibold tracking-wide flex items-center gap-1.5">
+                  <Terminal className="h-3.5 w-3.5 text-sky-400" />
+                  root@trex-host-10-69-70-20:/opt/trex/v3.08#
+                </span>
               </div>
-              <span className="text-slate-300">{filteredLogs.length} linhas</span>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-[11px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded font-mono">
+                  {filteredLogs.length} linhas
+                </span>
+              </div>
             </div>
 
             <div
@@ -218,29 +225,31 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
               aria-live="polite"
               aria-label="Linhas de log do console TRex"
               tabIndex={0}
-              className="h-[460px] overflow-y-auto p-4 font-mono text-xs leading-relaxed space-y-1 select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              className="h-[480px] overflow-y-auto p-4 font-mono text-[12px] leading-relaxed space-y-1.5 select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 bg-[#080b11]"
             >
               {filteredLogs.length === 0 ? (
-                <div className="text-slate-400 italic">Nenhuma saída de console gravada ainda.</div>
+                <div className="text-slate-500 italic p-4 text-center">Nenhuma saída de console gravada no momento. Execute um teste na aba de Controle para ver a telemetria em tempo real.</div>
               ) : (
                 filteredLogs.map((line, index) => {
-                  let colorClass = 'text-slate-200';
-                  if (line.includes('[ERR]') || line.includes('[ERROR]') || line.includes('Falha') || line.includes('FAIL')) {
-                    colorClass = 'text-red-400 font-semibold';
-                  } else if (line.includes('[AUTH]')) {
-                    colorClass = 'text-purple-300';
+                  let colorClass = 'text-slate-300';
+                  if (line.includes('[ERR]') || line.includes('[ERROR]') || line.includes('Falha') || line.includes('FAIL') || line.includes('error')) {
+                    colorClass = 'text-red-400 font-semibold bg-red-950/20 px-1 rounded border-l-2 border-red-500';
+                  } else if (line.includes('[AUTH]') || line.includes('[LOGIN]')) {
+                    colorClass = 'text-purple-300 font-medium';
                   } else if (line.includes('[START]') || line.includes('[SUCCESS]') || line.includes('online')) {
                     colorClass = 'text-emerald-400 font-medium';
-                  } else if (line.includes('[SAMPLE') || line.includes('[STATS]')) {
-                    colorClass = 'text-sky-300';
-                  } else if (line.includes('[WARN]')) {
-                    colorClass = 'text-amber-300';
+                  } else if (line.includes('[SAMPLE') || line.includes('[STATS]') || line.includes('[TELEMETRIA')) {
+                    colorClass = 'text-cyan-300 font-medium';
+                  } else if (line.includes('[WARN]') || line.includes('warning')) {
+                    colorClass = 'text-amber-300 font-medium';
                   } else if (line.includes('[FINISH]') || line.includes('[SUMMARY]')) {
-                    colorClass = 'text-emerald-300 font-bold bg-emerald-950/40 border-l-2 border-emerald-400 pl-2 py-1';
+                    colorClass = 'text-emerald-300 font-bold bg-emerald-950/40 border-l-2 border-emerald-400 pl-2.5 py-1 rounded-r';
+                  } else if (line.startsWith('> ') || line.includes('[TREX_CMD]')) {
+                    colorClass = 'text-sky-300 font-semibold';
                   }
 
                   return (
-                    <div key={index} className={`break-all ${colorClass}`}>
+                    <div key={index} className={`break-all font-mono ${colorClass}`}>
                       {line}
                     </div>
                   );

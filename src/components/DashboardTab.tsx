@@ -213,106 +213,124 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       {/* Real-time Telemetry Metrics Grid (WCAG AA Contrast Compliant) */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" role="group" aria-label="Métricas de Telemetria em Tempo Real">
-        {/* Tx Gbps */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Vazão de Transmissão Tx">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">Tx Throughput</span>
-            <ArrowUpRight className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+        {/* Card 1: Tx Throughput */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Vazão de Transmissão Tx">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Tx Vazão</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform duration-150">
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-400">
               {status?.metrics.txGbps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-slate-400">Gbps</span>
+            <span className="text-xs font-semibold text-slate-400">Gbps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             {(status?.metrics.txBps ? (status.metrics.txBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
-        {/* Rx Gbps */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Vazão de Recepção Rx">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">Rx Throughput</span>
-            <ArrowDownLeft className="h-4 w-4 text-cyan-400" aria-hidden="true" />
+        {/* Card 2: Rx Throughput */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Vazão de Recepção Rx">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Rx Recepção</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-105 transition-transform duration-150">
+              <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-cyan-400">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-cyan-400">
               {status?.metrics.rxGbps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-slate-400">Gbps</span>
+            <span className="text-xs font-semibold text-slate-400">Gbps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             {(status?.metrics.rxBps ? (status.metrics.rxBps / 8) / 1e6 : 0).toFixed(0)} MB/s
           </div>
         </div>
 
-        {/* Packet Rate Tx */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Taxa de Pacotes por Segundo">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">Tx Packet Rate</span>
-            <Gauge className="h-4 w-4 text-sky-400" aria-hidden="true" />
+        {/* Card 3: Packet Rate Tx */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Taxa de Pacotes por Segundo">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Taxa Pkts</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 group-hover:scale-105 transition-transform duration-150">
+              <Gauge className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-sky-300">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-sky-300">
               {status?.metrics.txMpps.toFixed(2) ?? '0.00'}
             </span>
-            <span className="text-xs text-slate-400">Mpps</span>
+            <span className="text-xs font-semibold text-slate-400">Mpps</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             Rx: {status?.metrics.rxMpps.toFixed(2) ?? '0.00'} Mpps
           </div>
         </div>
 
-        {/* Packet Drop Rate */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Taxa de Descarte de Pacotes">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">Taxa de Perda</span>
-            <AlertTriangle className="h-4 w-4 text-amber-400" aria-hidden="true" />
+        {/* Card 4: Packet Drop Rate */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Taxa de Descarte de Pacotes">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Taxa de Perda</span>
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-transform duration-150 group-hover:scale-105 ${
+                (status?.metrics.dropRatePercent || 0) > 0.01
+                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              }`}
+            >
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
             <span
-              className={`text-2xl font-bold font-mono ${
-                (status?.metrics.dropRatePercent || 0) > 0.01 ? 'text-red-400 font-bold' : 'text-emerald-400'
+              className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
+                (status?.metrics.dropRatePercent || 0) > 0.01 ? 'text-red-400' : 'text-emerald-400'
               }`}
             >
               {(status?.metrics.dropRatePercent ?? 0).toFixed(4)}%
             </span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             Jitter: {(status?.metrics.jitterMs ?? 0).toFixed(3)} ms
           </div>
         </div>
 
-        {/* Latency Avg */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Latência Média">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">Latência Média</span>
-            <Clock className="h-4 w-4 text-purple-400" aria-hidden="true" />
+        {/* Card 5: Latency Avg */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Latência Média">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Latência Média</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform duration-150">
+              <Clock className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-purple-300">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-purple-300">
               {status?.metrics.latencyAvgMs ? status.metrics.latencyAvgMs.toFixed(3) : '0.018'}
             </span>
-            <span className="text-xs text-slate-400">ms</span>
+            <span className="text-xs font-semibold text-slate-400">ms</span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             Max: {status?.metrics.latencyMaxMs ? status.metrics.latencyMaxMs.toFixed(3) : '0.040'} ms
           </div>
         </div>
 
-        {/* CPU DPDK Cores */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-sm" aria-label="Uso de CPU dos Cores DPDK">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-xs font-medium">DPDK CPU</span>
-            <Cpu className="h-4 w-4 text-amber-300" aria-hidden="true" />
+        {/* Card 6: CPU DPDK Cores */}
+        <div className="group rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20 hover:border-slate-700/80 transition-all duration-150" aria-label="Uso de CPU dos Cores DPDK">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">DPDK CPU</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 group-hover:scale-105 transition-transform duration-150">
+              <Cpu className="h-4 w-4" aria-hidden="true" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-mono text-amber-300">
+          <div className="mt-2.5 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-amber-300">
               {(status?.metrics.cpuUtilPercent ?? 0).toFixed(1)}%
             </span>
           </div>
-          <div className="mt-1 text-[11px] font-mono text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-slate-500">
             TRex Auto Cores
           </div>
         </div>
@@ -322,13 +340,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left Column: TRex Command Deck */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
               <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <Sliders className="h-4 w-4 text-sky-400" aria-hidden="true" />
                 <span>Painel de Configuração do Tráfego</span>
               </h2>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-400 bg-slate-950/70 border border-slate-800 px-2 py-0.5 rounded">
                 TRex 10.69.70.20
               </span>
             </div>
@@ -336,7 +354,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <div className="space-y-4">
               {/* Directory selection (cap2, stl, astf, avl) */}
               <fieldset>
-                <legend className="block text-xs font-medium text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <legend className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
                   <Folder className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
                   <span>Diretório do TRex (/opt/trex/v3.08/)</span>
                 </legend>
@@ -346,10 +364,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       key={dir}
                       type="button"
                       onClick={() => setSelectedDir(dir)}
-                      className={`min-h-[40px] py-2 px-3 text-xs font-mono font-medium rounded-lg border text-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                      className={`h-10 px-3 text-xs font-mono font-medium rounded-lg border text-center transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         selectedDir === dir
-                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 shadow-sm font-bold'
-                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-bold shadow-[0_0_12px_rgba(14,165,233,0.3)] ring-1 ring-sky-500/50'
+                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30'
                       }`}
                     >
                       {dir}
@@ -361,14 +379,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               {/* Profile Selection */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="profile-select" className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                  <label htmlFor="profile-select" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                     <FileCode className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
                     <span>Perfil de Tráfego (.yaml / .py)</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => onNavigateToEditor(selectedDir, selectedProfile)}
-                    className="text-[11px] text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded px-1"
+                    className="text-[11px] text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded px-1 transition"
                   >
                     <span>Editar no Editor</span>
                     <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -378,7 +396,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   id="profile-select"
                   value={selectedProfile}
                   onChange={(e) => setSelectedProfile(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[42px]"
+                  className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2.5 text-sm font-mono text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-10.5 transition"
                 >
                   {profiles.length === 0 ? (
                     <option value="">Nenhum perfil encontrado</option>
@@ -394,7 +412,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
               {/* Multiplier / Rate */}
               <fieldset>
-                <legend className="block text-xs font-medium text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <legend className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
                   <span>Multiplicador de Taxa (-m)</span>
                 </legend>
@@ -404,13 +422,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       key={key}
                       type="button"
                       onClick={() => setMultiplierChoice(key)}
-                      className={`p-2.5 min-h-[40px] text-xs rounded-lg border text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                      className={`p-2.5 h-10.5 text-xs rounded-lg border text-left transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         multiplierChoice === key
-                          ? 'border-amber-400 bg-amber-400/15 text-amber-200 font-semibold'
-                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
+                          ? 'border-amber-400/90 bg-amber-400/15 text-amber-200 font-semibold shadow-[0_0_12px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40'
+                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30'
                       }`}
                     >
-                      <div className="font-mono text-[11px]">{item.label}</div>
+                      <div className="font-mono text-[11px] truncate">{item.label}</div>
                     </button>
                   ))}
                 </div>
@@ -424,7 +442,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       value={multiplierCustom}
                       onChange={(e) => setMultiplierCustom(e.target.value)}
                       placeholder="Ex: 25gbps, 150000, 2"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[38px]"
+                      className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-10 transition"
                     />
                   </div>
                 )}
@@ -432,8 +450,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
               {/* Duration (-d) */}
               <fieldset>
-                <div className="flex items-center justify-between mb-1.5">
-                  <legend className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                <div className="flex items-center justify-between mb-2">
+                  <legend className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
                     <span>Duração da Injeção (-d)</span>
                   </legend>
@@ -448,10 +466,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       key={key}
                       type="button"
                       onClick={() => setDurationChoice(key)}
-                      className={`p-2.5 min-h-[40px] text-xs rounded-lg border text-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                      className={`p-2.5 h-10 text-xs rounded-lg border text-center transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                         durationChoice === key
-                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
-                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700'
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.25)] ring-1 ring-sky-500/40'
+                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30'
                       }`}
                     >
                       <div className="font-mono text-[11px]">{item.label}</div>
@@ -468,28 +486,28 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       value={durationCustom}
                       onChange={(e) => setDurationCustom(e.target.value)}
                       placeholder="Ex: 300"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none min-h-[38px]"
+                      className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-10 transition"
                     />
                   </div>
                 )}
               </fieldset>
 
               {/* Action Buttons matching the PHP functionalities */}
-              <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                <div className="text-[11px] font-medium text-slate-300 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
+                <div className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
                   <span>Ações de Injeção e Controle do Servidor:</span>
                   <span className="text-[10px] font-mono text-emerald-400 font-semibold">
                     Duração travada: {getEffectiveDuration()}s
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   {/* Start Test (Server 1) */}
                   <button
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 py-2.5 min-h-[42px] text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-emerald-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                     <span>Iniciar Server 1 ({getEffectiveDuration()}s)</span>
@@ -500,7 +518,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test2')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 py-2.5 min-h-[42px] text-xs font-bold text-white shadow-md active:scale-95 transition disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-sky-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                     <span>Iniciar Server 2 ({getEffectiveDuration()}s)</span>
@@ -513,7 +531,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={!isRunning || isSubmitting !== null}
                     onClick={() => handleAction('stop')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/15 p-2 min-h-[40px] text-xs font-semibold text-red-300 hover:bg-red-500/25 active:scale-95 transition disabled:opacity-30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                    title={!isRunning ? 'Nenhum teste ativo para interromper' : 'Interromper injeção de tráfego'}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border h-10 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${
+                      isRunning
+                        ? 'border-red-500/60 bg-red-500/15 text-red-300 hover:bg-red-500/25 active:scale-[0.98] cursor-pointer shadow-sm shadow-red-900/20'
+                        : 'border-slate-800 bg-slate-950/60 text-slate-600 cursor-not-allowed opacity-40'
+                    }`}
                   >
                     <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                     <span>Stop</span>
@@ -524,7 +547,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('stop_server')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-red-400 hover:bg-red-500/10 active:scale-95 transition disabled:opacity-30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                    title="Parar daemon do TRex e liberar HugePages"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-slate-950/80 h-10 text-xs font-medium text-red-400 hover:bg-red-500/10 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
                     <PowerOff className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>Stop Serv</span>
@@ -535,7 +559,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('stats')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-slate-100 hover:bg-slate-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-950/80 h-10 text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white active:scale-[0.98] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                   >
                     <BarChart2 className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
                     <span>Stats</span>
@@ -546,7 +570,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('clear')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 p-2 min-h-[40px] text-xs font-medium text-slate-100 hover:bg-slate-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-950/80 h-10 text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white active:scale-[0.98] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                   >
                     <RefreshCw className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
                     <span>Clear</span>
@@ -567,8 +591,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           />
 
           {/* Port Status Cards */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+          <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3.5">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
                 <span>Interfaces de Rede DPDK ({status?.ports[0]?.model ? status.ports[0].model.split(' ')[0] : 'Hardware Detectado'})</span>
@@ -585,15 +609,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     }
                   }}
                   title="Detectar placas instaladas no servidor (/etc/trex_cfg.yaml e PCI)"
-                  className="rounded bg-slate-950 border border-slate-700 px-2.5 py-1 text-[11px] text-sky-300 hover:text-white hover:border-slate-600 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                  className="rounded-lg bg-slate-950/80 border border-slate-700/80 px-2.5 py-1 text-[11px] text-sky-300 hover:text-white hover:border-sky-500/50 hover:bg-slate-800/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                 >
                   Re-escanear Hardware
                 </button>
-                <span className="text-[11px] font-mono text-emerald-400 font-semibold">DPDK Active</span>
+                <span className="text-[11px] font-mono text-emerald-400 font-semibold bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded">
+                  DPDK Active
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {(status?.ports || []).map((port) => {
                 const txGbps = port.txBps ? port.txBps / 1e9 : 0;
                 const rxGbps = port.rxBps ? port.rxBps / 1e9 : 0;
@@ -604,19 +630,19 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 return (
                   <div
                     key={port.id}
-                    className="rounded-lg border border-slate-700/80 bg-slate-950 p-3.5 text-xs font-mono space-y-2 shadow-sm"
+                    className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-4 text-xs font-mono space-y-2.5 shadow-md shadow-black/20 hover:border-slate-700/80 transition-all duration-150"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                       <div className="flex items-center gap-1.5 truncate max-w-[190px]">
                         <span className="font-bold text-sky-400" title={port.name}>
                           {port.name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">
                           Full-Duplex
                         </span>
-                        <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                        <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
                           {port.status} • {port.speed}
                         </span>
                       </div>

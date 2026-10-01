@@ -464,79 +464,85 @@ export const ReportsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Aggregated Overview Banner */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4">
-          <div className="text-xs text-[#6272a4]">Total de Relatórios Gerados</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-[#f8f8f2]">
+      {/* Top Aggregated Overview Banner (Centered Summary Cards) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4" role="group" aria-label="Visão Geral dos Relatórios">
+        <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20 text-center flex flex-col items-center justify-center">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total de Relatórios Gerados</div>
+          <div className="mt-2 flex items-baseline justify-center gap-2">
+            <span className="text-3xl font-black font-mono text-slate-100">
               {reports.length}
             </span>
-            <span className="text-xs text-[#50fa7b]">
+            <span className="text-xs font-semibold text-emerald-400">
               ({totalCompleted} concluídos)
             </span>
           </div>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">Homologações TRex</div>
         </div>
 
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4">
-          <div className="text-xs text-[#6272a4]">Throughput Médio Geral</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-[#50fa7b]">
+        <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20 text-center flex flex-col items-center justify-center">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Throughput Médio Geral</div>
+          <div className="mt-2 flex items-baseline justify-center gap-1.5">
+            <span className="text-3xl font-black font-mono text-emerald-400">
               {avgThroughput.toFixed(2)}
             </span>
-            <span className="text-xs text-[#6272a4]">Gbps</span>
+            <span className="text-xs font-semibold text-slate-400">Gbps</span>
           </div>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">L2 Ethernet Wire</div>
         </div>
 
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4">
-          <div className="text-xs text-[#6272a4]">Host de Execução TRex</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-mono text-[#8be9fd]">
+        <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20 text-center flex flex-col items-center justify-center">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Host de Execução TRex</div>
+          <div className="mt-2 flex items-baseline justify-center gap-2">
+            <span className="text-2xl font-black font-mono text-sky-400">
               10.69.70.20
             </span>
           </div>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">DPDK Port 4501</div>
         </div>
 
-        <div className="rounded-xl border border-[#44475a] bg-[#282a36] p-4">
-          <div className="text-xs text-[#6272a4]">Armazenamento Local</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-sm font-mono text-[#bd93f9]">
+        <div className="rounded-xl border border-slate-800/90 bg-slate-900/90 p-5 shadow-lg shadow-black/20 text-center flex flex-col items-center justify-center">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Armazenamento Local</div>
+          <div className="mt-2 flex items-baseline justify-center gap-2">
+            <span className="text-sm font-bold font-mono text-purple-300 bg-purple-950/40 border border-purple-800/60 px-2.5 py-1 rounded-lg">
               data/reports.json
             </span>
           </div>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">Persistência Ativa</div>
         </div>
       </div>
 
       {/* Filter and Actions Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#44475a] bg-[#282a36] p-4">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-[#bd93f9]" />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/90 bg-slate-900/90 p-4 shadow-lg shadow-black/20">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
+            <FileText className="h-4.5 w-4.5" />
+          </div>
           <div>
-            <h2 className="text-sm font-bold text-[#f8f8f2]">
+            <h2 className="text-sm font-bold text-slate-100">
               Histórico & Relatórios de Benchmark
             </h2>
-            <p className="text-[11px] text-[#6272a4]">
-              Compilação automática dos resultados de telemetria após cada execução
+            <p className="text-[11px] text-slate-400">
+              Compilação técnica e laudos de conformidade RFC 2544
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#6272a4]" />
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por perfil, operador..."
-              className="rounded-lg border border-[#44475a] bg-[#1e1f29] pl-8 pr-3 py-1.5 text-xs text-[#f8f8f2] focus:border-[#bd93f9] focus:outline-none w-56"
+              className="rounded-lg border border-slate-700/80 bg-slate-950 pl-8.5 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none w-60 h-9 transition"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-1.5 text-xs text-[#f8f8f2] focus:border-[#bd93f9] focus:outline-none"
+            className="rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-9 transition"
           >
             <option value="ALL">Todos os Status</option>
             <option value="COMPLETED">Concluídos</option>
@@ -546,38 +552,38 @@ export const ReportsTab: React.FC = () => {
 
           <button
             onClick={fetchReports}
-            className="rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-1.5 text-xs text-[#8be9fd] hover:bg-[#44475a] transition cursor-pointer"
+            className="rounded-lg border border-slate-700/80 bg-slate-950 px-3.5 h-9 text-xs font-semibold text-sky-300 hover:text-white hover:bg-slate-800/80 hover:border-slate-600 transition cursor-pointer"
           >
             Atualizar
           </button>
         </div>
       </div>
 
-      {/* Reports Table */}
-      <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#282a36] shadow-sm">
+      {/* Reports Table with Perfect Alignment */}
+      <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-900/90 shadow-xl">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-[#44475a] bg-[#1e1f29] font-mono text-[11px] text-[#6272a4] uppercase">
+          <thead className="border-b border-slate-800/90 bg-slate-950 font-mono text-[11px] text-slate-400 uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-3">Data / Hora</th>
-              <th className="px-4 py-3">Perfil & Pasta</th>
-              <th className="px-4 py-3">Taxa / Duração</th>
-              <th className="px-4 py-3">Operador</th>
-              <th className="px-4 py-3">Throughput (Tx / Rx)</th>
-              <th className="px-4 py-3">Drops</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Ações & Download</th>
+              <th className="px-4 py-3 text-left">Data / Hora</th>
+              <th className="px-4 py-3 text-left">Perfil & Pasta</th>
+              <th className="px-4 py-3 text-left">Taxa / Duração</th>
+              <th className="px-4 py-3 text-left">Operador</th>
+              <th className="px-4 py-3 text-right">Throughput (Tx / Rx)</th>
+              <th className="px-4 py-3 text-right">Perda Real</th>
+              <th className="px-4 py-3 text-center">Status</th>
+              <th className="px-4 py-3 text-right">Ações & Laudos</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#44475a]/50 font-mono">
+          <tbody className="divide-y divide-slate-800/60 font-mono">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-xs text-[#6272a4]">
+                <td colSpan={8} className="p-8 text-center text-xs text-slate-400">
                   Carregando relatórios...
                 </td>
               </tr>
             ) : filteredReports.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-xs text-[#6272a4]">
+                <td colSpan={8} className="p-8 text-center text-xs text-slate-400">
                   Nenhum relatório encontrado no histórico.
                 </td>
               </tr>
@@ -586,63 +592,66 @@ export const ReportsTab: React.FC = () => {
                 <tr
                   key={report.id}
                   onClick={() => setSelectedReport(report)}
-                  className="hover:bg-[#44475a]/30 transition cursor-pointer"
+                  className="hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
                 >
-                  <td className="px-4 py-3 whitespace-nowrap text-[#f8f8f2]">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-[#6272a4]" />
+                  {/* Descriptive text Left-Aligned */}
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-200 text-left">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Calendar className="h-3.5 w-3.5 text-slate-400" />
                       <span>{new Date(report.timestamp).toLocaleString('pt-BR')}</span>
                     </div>
-                    <div className="text-[10px] text-[#6272a4]">ID: {report.id}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">ID: {report.id}</div>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="font-bold text-[#8be9fd]">{report.profile}</span>
-                    <div className="text-[10px] text-[#6272a4]">/{report.dir}</div>
+                  <td className="px-4 py-3 whitespace-nowrap text-left">
+                    <span className="font-bold text-sky-400">{report.profile}</span>
+                    <div className="text-[10px] text-slate-500">/{report.dir}</div>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="text-[#f1fa8c]">{report.multiplier}</span>
-                    <div className="text-[10px] text-[#6272a4]">{report.duration}s</div>
+                  <td className="px-4 py-3 whitespace-nowrap text-left">
+                    <span className="text-amber-300 font-semibold">{report.multiplier}</span>
+                    <div className="text-[10px] text-slate-500">{report.duration}s</div>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap text-[#f8f8f2]">
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-200 text-left">
                     <div className="flex items-center gap-1">
-                      <User className="h-3 w-3 text-[#bd93f9]" />
-                      <span>{report.operator}</span>
+                      <User className="h-3 w-3 text-purple-400" />
+                      <span className="font-medium">{report.operator}</span>
                     </div>
-                    <div className="text-[10px] text-[#6272a4]">{report.serverType.split(' ')[0]}</div>
+                    <div className="text-[10px] text-slate-500">{report.serverType.split(' ')[0]}</div>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-[#50fa7b] font-bold">
+                  {/* Numbers Right-Aligned */}
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <div className="text-emerald-400 font-bold">
                       Tx: {report.summary?.avgTxGbps?.toFixed(2) || '0.00'} Gbps
                     </div>
-                    <div className="text-[#bd93f9] text-[10px]">
+                    <div className="text-cyan-400 text-[10px] font-semibold">
                       Rx: {report.summary?.avgRxGbps?.toFixed(2) || '0.00'} Gbps
                     </div>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
                     <span
-                      className={
-                        (report.summary?.avgDropRatePercent || 0) > 0.01
-                          ? 'text-[#ff5555]'
-                          : 'text-[#50fa7b]'
-                      }
+                      className={`font-bold ${
+                        (report.summary?.avgDropRatePercent || 0) > 0.0001
+                          ? 'text-red-400'
+                          : 'text-emerald-400'
+                      }`}
                     >
                       {(report.summary?.avgDropRatePercent || 0).toFixed(4)}%
                     </span>
                   </td>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* Status Badge Center-Aligned */}
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
                     <span
-                      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold ${
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                         report.status === 'COMPLETED'
-                          ? 'bg-[#50fa7b]/20 text-[#50fa7b]'
+                          ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
                           : report.status === 'STOPPED'
-                          ? 'bg-[#ffb86c]/20 text-[#ffb86c]'
-                          : 'bg-[#ff5555]/20 text-[#ff5555]'
+                          ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60'
+                          : 'bg-red-950/60 text-red-400 border border-red-800/60'
                       }`}
                     >
                       {report.status === 'COMPLETED' && <CheckCircle2 className="h-3 w-3" />}
@@ -652,13 +661,14 @@ export const ReportsTab: React.FC = () => {
                     </span>
                   </td>
 
+                  {/* Action Icons Muted with Smooth Hover Transitions */}
                   <td className="px-4 py-3 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setSelectedReport(report)}
-                        title="Ver detalhes"
-                        className="rounded p-1 text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2] transition cursor-pointer"
+                        title="Ver detalhes técnicos"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-sky-300 hover:bg-slate-800/80 transition-all duration-150 cursor-pointer"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -667,7 +677,7 @@ export const ReportsTab: React.FC = () => {
                         type="button"
                         onClick={(e) => handleDownload(report.id, 'json', e)}
                         title="Baixar JSON"
-                        className="rounded p-1 text-[#6272a4] hover:bg-[#44475a] hover:text-[#8be9fd] transition cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-sky-400 hover:bg-slate-800/80 transition-all duration-150 cursor-pointer"
                       >
                         <FileCode2 className="h-4 w-4" />
                       </button>
@@ -676,7 +686,7 @@ export const ReportsTab: React.FC = () => {
                         type="button"
                         onClick={(e) => handleDownload(report.id, 'csv', e)}
                         title="Baixar CSV"
-                        className="rounded p-1 text-[#6272a4] hover:bg-[#44475a] hover:text-[#50fa7b] transition cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-slate-800/80 transition-all duration-150 cursor-pointer"
                       >
                         <FileSpreadsheet className="h-4 w-4" />
                       </button>
@@ -685,7 +695,7 @@ export const ReportsTab: React.FC = () => {
                         type="button"
                         onClick={(e) => handleDownload(report.id, 'markdown', e)}
                         title="Baixar Markdown (.md)"
-                        className="rounded p-1 text-[#6272a4] hover:bg-[#44475a] hover:text-[#bd93f9] transition cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-purple-300 hover:bg-slate-800/80 transition-all duration-150 cursor-pointer"
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -693,8 +703,8 @@ export const ReportsTab: React.FC = () => {
                       <button
                         type="button"
                         onClick={(e) => handleExportPdf(report, e)}
-                        title="Exportar Laudo em PDF (A4)"
-                        className="rounded p-1 text-[#6272a4] hover:bg-red-500/20 hover:text-red-400 transition cursor-pointer"
+                        title="Exportar Laudo Oficial em PDF (A4)"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 transition-all duration-150 cursor-pointer"
                       >
                         <Printer className="h-4 w-4" />
                       </button>
@@ -703,7 +713,7 @@ export const ReportsTab: React.FC = () => {
                         type="button"
                         onClick={(e) => handleDelete(report.id, e)}
                         title="Excluir relatório"
-                        className="rounded p-1 text-[#6272a4] hover:bg-[#ff5555]/20 hover:text-[#ff5555] transition cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/15 transition-all duration-150 cursor-pointer"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
