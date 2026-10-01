@@ -18,7 +18,7 @@ import {
   FileCode,
   Zap,
 } from 'lucide-react';
-import { TRexStatus, ProfileItem } from '../types';
+import { TRexStatus, ProfileItem, ChartHistoryPoint } from '../types';
 import { ApiClient } from '../services/api';
 import { ThroughputChart } from './ThroughputChart';
 
@@ -68,7 +68,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
   // History for charts
-  const [chartHistory, setChartHistory] = useState<Array<{ time: number; txGbps: number; rxGbps: number }>>([]);
+  const [chartHistory, setChartHistory] = useState<ChartHistoryPoint[]>([]);
 
   // Load profiles for current directory
   useEffect(() => {
@@ -95,10 +95,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   useEffect(() => {
     if (!status) return;
     const now = Date.now();
-    const newPoint = {
+    const p0 = status.ports?.[0];
+    const p1 = status.ports?.[1];
+
+    const totalTxGbps = status.metrics?.txGbps || 0;
+    const totalRxGbps = status.metrics?.rxGbps || 0;
+
+    const p0TxGbps = p0?.txBps ? p0.txBps / 1e9 : totalTxGbps / 2;
+    const p0RxGbps = p0?.rxBps ? p0.rxBps / 1e9 : totalRxGbps / 2;
+    const p1TxGbps = p1?.txBps ? p1.txBps / 1e9 : totalTxGbps / 2;
+    const p1RxGbps = p1?.rxBps ? p1.rxBps / 1e9 : totalRxGbps / 2;
+
+    const newPoint: ChartHistoryPoint = {
       time: now,
-      txGbps: status.metrics?.txGbps || 0,
-      rxGbps: status.metrics?.rxGbps || 0,
+      txGbps: totalTxGbps,
+      rxGbps: totalRxGbps,
+      p0TxGbps,
+      p0RxGbps,
+      p1TxGbps,
+      p1RxGbps,
     };
 
     setChartHistory((prev) => {
@@ -567,61 +582,95 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(status?.ports || []).map((port) => (
-                <div
-                  key={port.id}
-                  className="rounded-lg border border-[#44475a] bg-[#1e1f29] p-3 text-xs font-mono space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#8be9fd] truncate max-w-[190px]" title={port.name}>
-                      {port.name}
-                    </span>
-                    <span className="rounded bg-[#50fa7b]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#50fa7b]">
-                      {port.status} • {port.speed}
-                    </span>
-                  </div>
+              {(status?.ports || []).map((port) => {
+                const txGbps = port.txBps ? port.txBps / 1e9 : 0;
+                const rxGbps = port.rxBps ? port.rxBps / 1e9 : 0;
+                const portMaxSpeed = port.speed.includes('100') ? 100 : port.speed.includes('40') ? 40 : port.speed.includes('25') ? 25 : 10;
+                const txPercent = Math.min(100, Math.max(0, (txGbps / portMaxSpeed) * 100));
+                const rxPercent = Math.min(100, Math.max(0, (rxGbps / portMaxSpeed) * 100));
 
-                  {port.model && (
-                    <div className="flex justify-between text-[#6272a4] text-[11px]">
-                      <span>Modelo:</span>
-                      <span className="text-[#f8f8f2] truncate max-w-[180px]">{port.model}</span>
+                return (
+                  <div
+                    key={port.id}
+                    className="rounded-lg border border-slate-700/80 bg-slate-900/90 p-3.5 text-xs font-mono space-y-2 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                        <span className="font-bold text-sky-400" title={port.name}>
+                          {port.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">
+                          Full-Duplex
+                        </span>
+                        <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                          {port.status} • {port.speed}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  {port.pciAddress && (
-                    <div className="flex justify-between text-[#6272a4] text-[11px]">
-                      <span>PCIe / Driver:</span>
-                      <span className="text-[#f1fa8c] truncate">{port.pciAddress} ({port.driver || 'DPDK'})</span>
+                    {port.model && (
+                      <div className="flex justify-between text-slate-400 text-[11px]">
+                        <span>Modelo:</span>
+                        <span className="text-slate-200 truncate max-w-[180px]">{port.model}</span>
+                      </div>
+                    )}
+
+                    {port.pciAddress && (
+                      <div className="flex justify-between text-slate-400 text-[11px]">
+                        <span>PCIe / Driver:</span>
+                        <span className="text-amber-300 truncate">{port.pciAddress} ({port.driver || 'DPDK'})</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-slate-400 text-[11px]">
+                      <span>MAC / IP:</span>
+                      <span className="text-slate-200">{port.mac || port.ip}</span>
                     </div>
-                  )}
 
-                  <div className="flex justify-between text-[#6272a4]">
-                    <span>MAC / IP:</span>
-                    <span className="text-[#f8f8f2]">{port.mac || port.ip}</span>
-                  </div>
+                    {/* Full-Duplex Rate Meters */}
+                    <div className="pt-1 space-y-1.5 border-t border-slate-800/80">
+                      <div>
+                        <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
+                          <span className="flex items-center gap-1 text-emerald-400 font-sans">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            Tx (Injeção):
+                          </span>
+                          <span className="text-emerald-400 font-bold">{txGbps.toFixed(2)} Gbps</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.max(txPercent, txGbps > 0 ? 3 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
 
-                  <div className="flex justify-between text-[#6272a4]">
-                    <span>Tx Rate:</span>
-                    <span className="text-[#50fa7b] font-semibold">
-                      {(port.txBps ? port.txBps / 1e9 : 0).toFixed(2)} Gbps
-                    </span>
-                  </div>
+                      <div>
+                        <div className="flex justify-between text-slate-400 text-[11px] mb-0.5">
+                          <span className="flex items-center gap-1 text-cyan-400 font-sans">
+                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                            Rx (Recepção):
+                          </span>
+                          <span className="text-cyan-400 font-bold">{rxGbps.toFixed(2)} Gbps</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-cyan-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.max(rxPercent, rxGbps > 0 ? 3 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-                  <div className="flex justify-between text-[#6272a4]">
-                    <span>Rx Rate:</span>
-                    <span className="text-[#bd93f9] font-semibold">
-                      {(port.rxBps ? port.rxBps / 1e9 : 0).toFixed(2)} Gbps
-                    </span>
+                    <div className="flex justify-between text-slate-400 text-[10px] border-t border-slate-800/80 pt-1.5">
+                      <span>Tx: <strong className="text-slate-300 font-normal">{port.opackets.toLocaleString()} pkts</strong></span>
+                      <span>Rx: <strong className="text-slate-300 font-normal">{port.ipackets.toLocaleString()} pkts</strong></span>
+                    </div>
                   </div>
-
-                  <div className="flex justify-between text-[#6272a4] border-t border-[#44475a]/50 pt-1">
-                    <span>Total Pacotes:</span>
-                    <span className="text-[#f8f8f2]">
-                      {(port.opackets + port.ipackets).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

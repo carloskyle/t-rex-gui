@@ -87,6 +87,10 @@ export interface TelemetrySample {
   dropRatePercent: number;
   cpuPercent: number;
   latencyMs: number;
+  p0TxGbps?: number;
+  p0RxGbps?: number;
+  p1TxGbps?: number;
+  p1RxGbps?: number;
 }
 
 export interface DetailedPortReport {

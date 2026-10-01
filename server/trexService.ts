@@ -992,6 +992,11 @@ while True:
     this.currentSampleStats.totalRxPkts += Math.round(rxPps);
     this.currentSampleStats.latencies.push(0.022);
 
+    const p0TxBps = typeof data.p0_tx_bps === 'number' ? data.p0_tx_bps : (txBps / 2);
+    const p0RxBps = typeof data.p0_rx_bps === 'number' ? data.p0_rx_bps : (rxBps / 2);
+    const p1TxBps = typeof data.p1_tx_bps === 'number' ? data.p1_tx_bps : (txBps / 2);
+    const p1RxBps = typeof data.p1_rx_bps === 'number' ? data.p1_rx_bps : (rxBps / 2);
+
     if (elapsed > 0) {
       this.currentSampleStats.timelineSamples.push({
         second: elapsed,
@@ -1001,7 +1006,11 @@ while True:
         rxMpps: Number(rxMpps.toFixed(3)),
         dropRatePercent: txPps > 0 ? Number(((drops / txPps) * 100).toFixed(4)) : 0,
         cpuPercent: Number(cpuUtil.toFixed(1)),
-        latencyMs: 0.022
+        latencyMs: 0.022,
+        p0TxGbps: Number((p0TxBps / 1e9).toFixed(3)),
+        p0RxGbps: Number((p0RxBps / 1e9).toFixed(3)),
+        p1TxGbps: Number((p1TxBps / 1e9).toFixed(3)),
+        p1RxGbps: Number((p1RxBps / 1e9).toFixed(3)),
       });
     }
 
@@ -1020,14 +1029,14 @@ while True:
     }
 
     if (this.status.ports[0]) {
-      this.status.ports[0].txBps = data.p0_tx_bps || txBps;
-      this.status.ports[0].rxBps = data.p0_rx_bps || 0;
+      this.status.ports[0].txBps = p0TxBps;
+      this.status.ports[0].rxBps = p0RxBps;
       this.status.ports[0].opackets = data.p0_opkts || this.status.ports[0].opackets;
       this.status.ports[0].ipackets = data.p0_ipkts || this.status.ports[0].ipackets;
     }
     if (this.status.ports[1]) {
-      this.status.ports[1].txBps = data.p1_tx_bps || 0;
-      this.status.ports[1].rxBps = data.p1_rx_bps || rxBps;
+      this.status.ports[1].txBps = p1TxBps;
+      this.status.ports[1].rxBps = p1RxBps;
       this.status.ports[1].opackets = data.p1_opkts || this.status.ports[1].opackets;
       this.status.ports[1].ipackets = data.p1_ipkts || this.status.ports[1].ipackets;
     }
@@ -1105,18 +1114,48 @@ while True:
       this.currentSampleStats.totalRxPkts += Math.round(rxPps);
       this.currentSampleStats.latencies.push(latAvg);
 
-      // Update physical port stats
+      const halfCurrentPps = Math.round(currentPps / 2);
+      const halfRxPps = Math.round(rxPps / 2);
+      const halfCurrentBps = currentBps / 2;
+      const halfRxBps = rxBps / 2;
+
+      // Update physical port stats (both ports actively transmit and receive)
       if (this.status.ports[0]) {
-        this.status.ports[0].txBps = currentBps;
-        this.status.ports[0].txPps = currentPps;
-        this.status.ports[0].opackets += Math.round(currentPps);
-        this.status.ports[0].obytes += Math.round(currentBps);
+        this.status.ports[0].txBps = halfCurrentBps;
+        this.status.ports[0].rxBps = halfRxBps;
+        this.status.ports[0].txPps = halfCurrentPps;
+        this.status.ports[0].rxPps = halfRxPps;
+        this.status.ports[0].opackets += halfCurrentPps;
+        this.status.ports[0].ipackets += halfRxPps;
+        this.status.ports[0].obytes += Math.round(halfCurrentBps);
+        this.status.ports[0].ibytes += Math.round(halfRxBps);
       }
       if (this.status.ports[1]) {
-        this.status.ports[1].rxBps = rxBps;
-        this.status.ports[1].rxPps = rxPps;
-        this.status.ports[1].ipackets += Math.round(rxPps);
-        this.status.ports[1].ibytes += Math.round(rxBps);
+        this.status.ports[1].txBps = halfCurrentBps;
+        this.status.ports[1].rxBps = halfRxBps;
+        this.status.ports[1].txPps = halfCurrentPps;
+        this.status.ports[1].rxPps = halfRxPps;
+        this.status.ports[1].opackets += halfCurrentPps;
+        this.status.ports[1].ipackets += halfRxPps;
+        this.status.ports[1].obytes += Math.round(halfCurrentBps);
+        this.status.ports[1].ibytes += Math.round(halfRxBps);
+      }
+
+      if (elapsed > 0) {
+        this.currentSampleStats.timelineSamples.push({
+          second: elapsed,
+          txGbps: Number(currentGbps.toFixed(3)),
+          rxGbps: Number(((rxBps * 8) / 1e9).toFixed(3)),
+          txMpps: Number((currentPps / 1e6).toFixed(3)),
+          rxMpps: Number((rxPps / 1e6).toFixed(3)),
+          dropRatePercent: currentPps > 0 ? Number(((dropCount / currentPps) * 100).toFixed(4)) : 0,
+          cpuPercent: Number(cpuUtil.toFixed(1)),
+          latencyMs: Number(latAvg.toFixed(3)),
+          p0TxGbps: Number((currentGbps / 2).toFixed(3)),
+          p0RxGbps: Number((((rxBps * 8) / 1e9) / 2).toFixed(3)),
+          p1TxGbps: Number((currentGbps / 2).toFixed(3)),
+          p1RxGbps: Number((((rxBps * 8) / 1e9) / 2).toFixed(3)),
+        });
       }
 
       // Log progress every 10 seconds
@@ -1234,42 +1273,53 @@ while True:
     const p0 = this.status.ports[0] || ({} as any);
     const p1 = this.status.ports[1] || ({} as any);
 
+    // In bidirectional testing, calculate per-port metrics
+    const p0TxPkts = p0.opackets || Math.round(totalTxPkts / 2);
+    const p0RxPkts = p0.ipackets || Math.round(totalRxPkts / 2);
+    const p0TxBytes = p0.obytes || Math.round(totalTxBytes / 2);
+    const p0RxBytes = p0.ibytes || Math.round(totalRxBytes / 2);
+
+    const p1TxPkts = p1.opackets || Math.round(totalTxPkts / 2);
+    const p1RxPkts = p1.ipackets || Math.round(totalRxPkts / 2);
+    const p1TxBytes = p1.obytes || Math.round(totalTxBytes / 2);
+    const p1RxBytes = p1.ibytes || Math.round(totalRxBytes / 2);
+
     const detailedPorts: DetailedPortReport[] = [
       {
         id: 0,
-        name: p0.name || 'Interface DPDK 0 (Tx / Injeção)',
+        name: p0.name || 'Interface DPDK 0 (Full-Duplex)',
         speed: p0.speed || '10 Gbps',
         pciAddress: p0.pciAddress || '0000:03:00.0',
         driver: p0.driver || 'mlx5_core',
         mac: p0.mac || '00:1B:21:BA:C1:20',
         ip: p0.ip || '16.0.0.1',
-        totalTxPkts,
-        totalRxPkts: 0,
-        totalTxBytes,
-        totalRxBytes: 0,
-        avgTxGbps,
-        avgRxGbps: 0,
-        avgTxMpps,
-        avgRxMpps: 0,
-        errors: 0
+        totalTxPkts: p0TxPkts,
+        totalRxPkts: p0RxPkts,
+        totalTxBytes: p0TxBytes,
+        totalRxBytes: p0RxBytes,
+        avgTxGbps: Number((avgTxGbps / 2).toFixed(3)),
+        avgRxGbps: Number((avgRxGbps / 2).toFixed(3)),
+        avgTxMpps: Number((avgTxMpps / 2).toFixed(3)),
+        avgRxMpps: Number((avgRxMpps / 2).toFixed(3)),
+        errors: Math.max(0, p0TxPkts - p1RxPkts)
       },
       {
         id: 1,
-        name: p1.name || 'Interface DPDK 1 (Rx / Retorno DUT)',
+        name: p1.name || 'Interface DPDK 1 (Full-Duplex)',
         speed: p1.speed || '10 Gbps',
         pciAddress: p1.pciAddress || '0000:03:00.1',
         driver: p1.driver || 'mlx5_core',
         mac: p1.mac || '00:1B:21:BA:C1:21',
         ip: p1.ip || '48.0.0.1',
-        totalTxPkts: 0,
-        totalRxPkts,
-        totalTxBytes: 0,
-        totalRxBytes,
-        avgTxGbps: 0,
-        avgRxGbps,
-        avgTxMpps: 0,
-        avgRxMpps,
-        errors: droppedPacketsTotal
+        totalTxPkts: p1TxPkts,
+        totalRxPkts: p1RxPkts,
+        totalTxBytes: p1TxBytes,
+        totalRxBytes: p1RxBytes,
+        avgTxGbps: Number((avgTxGbps / 2).toFixed(3)),
+        avgRxGbps: Number((avgRxGbps / 2).toFixed(3)),
+        avgTxMpps: Number((avgTxMpps / 2).toFixed(3)),
+        avgRxMpps: Number((avgRxMpps / 2).toFixed(3)),
+        errors: Math.max(0, p1TxPkts - p0RxPkts)
       }
     ];
 

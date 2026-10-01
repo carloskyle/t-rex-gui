@@ -580,51 +580,62 @@ export const ReportsTab: React.FC = () => {
                     <tr>
                       <th className="px-3 py-2">Interface</th>
                       <th className="px-3 py-2">PCIe / Driver</th>
-                      <th className="px-3 py-2">Endereço MAC</th>
-                      <th className="px-3 py-2">Taxa Média</th>
-                      <th className="px-3 py-2">Taxa de Pacotes</th>
-                      <th className="px-3 py-2">Total de Pacotes</th>
+                      <th className="px-3 py-2">Tx Rate</th>
+                      <th className="px-3 py-2">Rx Rate</th>
+                      <th className="px-3 py-2">Pacotes Tx</th>
+                      <th className="px-3 py-2">Pacotes Rx</th>
+                      <th className="px-3 py-2">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
                     <tr>
                       <td className="px-3 py-2 font-bold text-[#8be9fd]">
-                        Porta 0 (Injeção Tx)
+                        Porta 0 (Full-Duplex)
                       </td>
                       <td className="px-3 py-2 text-[11px] text-[#6272a4]">
                         {selectedReport.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} ({selectedReport.detailedPorts?.[0]?.driver || 'mlx5_core'})
                       </td>
-                      <td className="px-3 py-2 text-[11px]">
-                        {selectedReport.detailedPorts?.[0]?.mac || '00:1B:21:BA:C1:20'}
-                      </td>
                       <td className="px-3 py-2 text-[#50fa7b] font-bold">
-                        {selectedReport.summary?.avgTxGbps?.toFixed(2) || '0.00'} Gbps
+                        {selectedReport.detailedPorts?.[0]?.avgTxGbps?.toFixed(2) || ((selectedReport.summary?.avgTxGbps || 0) / 2).toFixed(2)} Gbps
                       </td>
-                      <td className="px-3 py-2 text-[#8be9fd]">
-                        {selectedReport.summary?.avgTxMpps?.toFixed(3) || '0.00'} Mpps
+                      <td className="px-3 py-2 text-[#06b6d4] font-bold">
+                        {selectedReport.detailedPorts?.[0]?.avgRxGbps?.toFixed(2) || ((selectedReport.summary?.avgRxGbps || 0) / 2).toFixed(2)} Gbps
                       </td>
                       <td className="px-3 py-2">
-                        {selectedReport.summary?.totalPacketsTx?.toLocaleString()} pkts
+                        {(selectedReport.detailedPorts?.[0]?.totalTxPkts || Math.round((selectedReport.summary?.totalPacketsTx || 0) / 2)).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(selectedReport.detailedPorts?.[0]?.totalRxPkts || Math.round((selectedReport.summary?.totalPacketsRx || 0) / 2)).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="rounded bg-[#50fa7b]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#50fa7b]">
+                          UP • Full-Duplex
+                        </span>
                       </td>
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-bold text-[#bd93f9]">
-                        Porta 1 (Retorno Rx)
+                        Porta 1 (Full-Duplex)
                       </td>
                       <td className="px-3 py-2 text-[11px] text-[#6272a4]">
                         {selectedReport.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} ({selectedReport.detailedPorts?.[1]?.driver || 'mlx5_core'})
                       </td>
-                      <td className="px-3 py-2 text-[11px]">
-                        {selectedReport.detailedPorts?.[1]?.mac || '00:1B:21:BA:C1:21'}
+                      <td className="px-3 py-2 text-[#50fa7b] font-bold">
+                        {selectedReport.detailedPorts?.[1]?.avgTxGbps?.toFixed(2) || ((selectedReport.summary?.avgTxGbps || 0) / 2).toFixed(2)} Gbps
                       </td>
-                      <td className="px-3 py-2 text-[#bd93f9] font-bold">
-                        {selectedReport.summary?.avgRxGbps?.toFixed(2) || '0.00'} Gbps
-                      </td>
-                      <td className="px-3 py-2 text-[#8be9fd]">
-                        {selectedReport.summary?.avgRxMpps?.toFixed(3) || '0.00'} Mpps
+                      <td className="px-3 py-2 text-[#06b6d4] font-bold">
+                        {selectedReport.detailedPorts?.[1]?.avgRxGbps?.toFixed(2) || ((selectedReport.summary?.avgRxGbps || 0) / 2).toFixed(2)} Gbps
                       </td>
                       <td className="px-3 py-2">
-                        {selectedReport.summary?.totalPacketsRx?.toLocaleString()} pkts
+                        {(selectedReport.detailedPorts?.[1]?.totalTxPkts || Math.round((selectedReport.summary?.totalPacketsTx || 0) / 2)).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(selectedReport.detailedPorts?.[1]?.totalRxPkts || Math.round((selectedReport.summary?.totalPacketsRx || 0) / 2)).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="rounded bg-[#50fa7b]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#50fa7b]">
+                          UP • Full-Duplex
+                        </span>
                       </td>
                     </tr>
                   </tbody>

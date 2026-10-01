@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Activity, Maximize2, Zap, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Activity, Maximize2, Zap, ArrowLeftRight, Layers, HelpCircle } from 'lucide-react';
+import { ChartHistoryPoint } from '../types';
+
+export type ChartViewMode = 'aggregate' | 'port0' | 'port1' | 'both';
 
 interface ThroughputChartProps {
-  history: Array<{ time: number; txGbps: number; rxGbps: number }>;
+  history: Array<ChartHistoryPoint>;
   unit?: string;
   defaultScale?: 'auto' | 1 | 5 | 10 | 25 | 40 | 100;
   onClearHistory?: () => void;
@@ -18,17 +21,44 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [scaleMode, setScaleMode] = useState<'auto' | 1 | 5 | 10 | 25 | 40 | 100>(defaultScale);
+  const [viewMode, setViewMode] = useState<ChartViewMode>('aggregate');
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // Latest real-time readings
-  const latestPoint = history.length > 0 ? history[history.length - 1] : { txGbps: 0, rxGbps: 0, time: Date.now() };
+  const latestPoint: ChartHistoryPoint = history.length > 0 ? history[history.length - 1] : {
+    time: Date.now(),
+    txGbps: 0,
+    rxGbps: 0,
+    p0TxGbps: 0,
+    p0RxGbps: 0,
+    p1TxGbps: 0,
+    p1RxGbps: 0,
+  };
 
-  // Calculate highest peak observed in history
+  // Calculate highest peak observed in history according to active viewMode
   const peakObserved = useMemo(() => {
     if (history.length === 0) return 0;
-    return history.reduce((max, pt) => Math.max(max, pt.txGbps, pt.rxGbps), 0);
-  }, [history]);
+    return history.reduce((max, pt) => {
+      if (viewMode === 'port0') {
+        return Math.max(max, pt.p0TxGbps || pt.txGbps / 2, pt.p0RxGbps || pt.rxGbps / 2);
+      }
+      if (viewMode === 'port1') {
+        return Math.max(max, pt.p1TxGbps || pt.txGbps / 2, pt.p1RxGbps || pt.rxGbps / 2);
+      }
+      if (viewMode === 'both') {
+        return Math.max(
+          max,
+          pt.p0TxGbps || pt.txGbps / 2,
+          pt.p0RxGbps || pt.rxGbps / 2,
+          pt.p1TxGbps || pt.txGbps / 2,
+          pt.p1RxGbps || pt.rxGbps / 2
+        );
+      }
+      // Aggregate mode (Total Tx vs Total Rx)
+      return Math.max(max, pt.txGbps, pt.rxGbps);
+    }, 0);
+  }, [history, viewMode]);
 
   // Compute effective maximum scale
   const effectiveMaxGbps = useMemo(() => {
@@ -36,7 +66,6 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       return scaleMode;
     }
 
-    // Auto-scaling: compute ideal ceiling based on current peak + 25% headroom
     const peak = Math.max(0.2, peakObserved);
     const headroom = peak * 1.25;
 
@@ -65,7 +94,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     const displayWidth = rect.width || 700;
-    const displayHeight = rect.height || 200;
+    const displayHeight = rect.height || 210;
 
     canvas.width = displayWidth * dpr;
     canvas.height = displayHeight * dpr;
@@ -119,7 +148,6 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
 
     timeLabels.forEach((label, idx) => {
       const x = paddingLeft + idx * timeStep;
-      // Small vertical tick
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
       ctx.moveTo(x, paddingTop);
@@ -135,7 +163,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('Aguardando fluxo de telemetria DPDK...', width / 2, height / 2);
+      ctx.fillText('Aguardando injeção e recepção de tráfego DPDK Full-Duplex...', width / 2, height / 2);
       return;
     }
 
@@ -148,37 +176,38 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       return paddingTop + graphHeight - (clamped / maxVal) * graphHeight;
     };
 
-    // 3. Draw Area Fill and Lines
+    // Helper to draw a single data series with optional gradient fill
     const drawSeries = (
-      dataKey: 'txGbps' | 'rxGbps',
+      getValue: (pt: ChartHistoryPoint) => number,
       strokeColor: string,
-      gradientColorStart: string,
-      gradientColorEnd: string,
+      gradientStart?: string,
+      gradientEnd?: string,
       lineWidth = 2
     ) => {
       if (history.length === 0) return;
 
-      // Create gradient fill
-      const grad = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
-      grad.addColorStop(0, gradientColorStart);
-      grad.addColorStop(1, gradientColorEnd);
+      // Area gradient fill
+      if (gradientStart && gradientEnd) {
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+        grad.addColorStop(0, gradientStart);
+        grad.addColorStop(1, gradientEnd);
 
-      // Path for fill
-      ctx.beginPath();
-      ctx.moveTo(getX(0), paddingTop + graphHeight);
-      history.forEach((pt, i) => {
-        ctx.lineTo(getX(i), getY(pt[dataKey]));
-      });
-      ctx.lineTo(getX(history.length - 1), paddingTop + graphHeight);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(getX(0), paddingTop + graphHeight);
+        history.forEach((pt, i) => {
+          ctx.lineTo(getX(i), getY(getValue(pt)));
+        });
+        ctx.lineTo(getX(history.length - 1), paddingTop + graphHeight);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
 
-      // Path for stroke line
+      // Stroke line
       ctx.beginPath();
       history.forEach((pt, i) => {
         const x = getX(i);
-        const y = getY(pt[dataKey]);
+        const y = getY(getValue(pt));
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
@@ -189,18 +218,35 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       ctx.stroke();
     };
 
-    // Draw RX (Cyan / Sky: #06b6d4)
-    drawSeries('rxGbps', '#06b6d4', 'rgba(6, 182, 212, 0.25)', 'rgba(6, 182, 212, 0.01)', 2);
-
-    // Draw TX (Emerald / Bright Green: #10b981)
-    drawSeries('txGbps', '#10b981', 'rgba(16, 185, 129, 0.35)', 'rgba(16, 185, 129, 0.02)', 2.5);
+    // 3. Draw series based on active viewMode
+    if (viewMode === 'aggregate') {
+      // Full-Duplex Aggregate: Total Rx (Cyan) & Total Tx (Emerald)
+      drawSeries((pt) => pt.rxGbps, '#06b6d4', 'rgba(6, 182, 212, 0.22)', 'rgba(6, 182, 212, 0.01)', 2);
+      drawSeries((pt) => pt.txGbps, '#10b981', 'rgba(16, 185, 129, 0.32)', 'rgba(16, 185, 129, 0.02)', 2.5);
+    } else if (viewMode === 'port0') {
+      // Interface 0: Rx (Cyan) & Tx (Emerald)
+      drawSeries((pt) => pt.p0RxGbps ?? pt.rxGbps / 2, '#06b6d4', 'rgba(6, 182, 212, 0.25)', 'rgba(6, 182, 212, 0.01)', 2);
+      drawSeries((pt) => pt.p0TxGbps ?? pt.txGbps / 2, '#10b981', 'rgba(16, 185, 129, 0.35)', 'rgba(16, 185, 129, 0.02)', 2.5);
+    } else if (viewMode === 'port1') {
+      // Interface 1: Rx (Cyan) & Tx (Emerald)
+      drawSeries((pt) => pt.p1RxGbps ?? pt.rxGbps / 2, '#38bdf8', 'rgba(56, 189, 248, 0.25)', 'rgba(56, 189, 248, 0.01)', 2);
+      drawSeries((pt) => pt.p1TxGbps ?? pt.txGbps / 2, '#34d399', 'rgba(52, 211, 153, 0.35)', 'rgba(52, 211, 153, 0.02)', 2.5);
+    } else if (viewMode === 'both') {
+      // 4 Vias Simultâneas (Port 0 Tx/Rx + Port 1 Tx/Rx)
+      // P1 Rx: Purple #a855f7
+      drawSeries((pt) => pt.p1RxGbps ?? pt.rxGbps / 2, '#a855f7', undefined, undefined, 2);
+      // P1 Tx: Amber #f59e0b
+      drawSeries((pt) => pt.p1TxGbps ?? pt.txGbps / 2, '#f59e0b', undefined, undefined, 2);
+      // P0 Rx: Cyan #06b6d4
+      drawSeries((pt) => pt.p0RxGbps ?? pt.rxGbps / 2, '#06b6d4', undefined, undefined, 2);
+      // P0 Tx: Emerald #10b981
+      drawSeries((pt) => pt.p0TxGbps ?? pt.txGbps / 2, '#10b981', undefined, undefined, 2.5);
+    }
 
     // 4. Hover Crosshair & Dot Markers
     if (hoverIndex !== null && hoverIndex >= 0 && hoverIndex < history.length) {
       const pt = history[hoverIndex];
       const hX = getX(hoverIndex);
-      const hTxY = getY(pt.txGbps);
-      const hRxY = getY(pt.rxGbps);
 
       // Vertical dashed line
       ctx.save();
@@ -213,25 +259,34 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
       ctx.stroke();
       ctx.restore();
 
-      // RX Marker circle
-      ctx.beginPath();
-      ctx.arc(hX, hRxY, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#06b6d4';
-      ctx.fill();
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      const drawDot = (val: number, color: string) => {
+        const dotY = getY(val);
+        ctx.beginPath();
+        ctx.arc(hX, dotY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      };
 
-      // TX Marker circle
-      ctx.beginPath();
-      ctx.arc(hX, hTxY, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#10b981';
-      ctx.fill();
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      if (viewMode === 'aggregate') {
+        drawDot(pt.rxGbps, '#06b6d4');
+        drawDot(pt.txGbps, '#10b981');
+      } else if (viewMode === 'port0') {
+        drawDot(pt.p0RxGbps ?? pt.rxGbps / 2, '#06b6d4');
+        drawDot(pt.p0TxGbps ?? pt.txGbps / 2, '#10b981');
+      } else if (viewMode === 'port1') {
+        drawDot(pt.p1RxGbps ?? pt.rxGbps / 2, '#38bdf8');
+        drawDot(pt.p1TxGbps ?? pt.txGbps / 2, '#34d399');
+      } else if (viewMode === 'both') {
+        drawDot(pt.p0TxGbps ?? pt.txGbps / 2, '#10b981');
+        drawDot(pt.p0RxGbps ?? pt.rxGbps / 2, '#06b6d4');
+        drawDot(pt.p1TxGbps ?? pt.txGbps / 2, '#f59e0b');
+        drawDot(pt.p1RxGbps ?? pt.rxGbps / 2, '#a855f7');
+      }
     }
-  }, [history, effectiveMaxGbps, hoverIndex]);
+  }, [history, effectiveMaxGbps, hoverIndex, viewMode]);
 
   // Handle canvas mouse move for interactive tooltip
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -268,40 +323,62 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
 
   return (
     <div ref={containerRef} className="relative w-full rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl backdrop-blur-sm">
-      {/* Header bar: Live telemetries, peak & scale selector */}
+      {/* Top Bar: View Mode Switcher and Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800/80">
-        {/* Real-time Readings */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-          {/* TX Live */}
-          <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <div className="flex items-baseline gap-1">
-              <span className="text-slate-400 text-[11px] font-sans">Tx:</span>
-              <span className="font-bold text-emerald-400 text-sm">
-                {latestPoint.txGbps.toFixed(2)}
-              </span>
-              <span className="text-[10px] text-slate-500">{unit}</span>
-            </div>
-          </div>
+        {/* View Mode Tabs */}
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('aggregate')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'aggregate'
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            <span>Full-Duplex Agregado</span>
+          </button>
 
-          {/* RX Live */}
-          <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-            <span className="h-2 w-2 rounded-full bg-cyan-400" />
-            <div className="flex items-baseline gap-1">
-              <span className="text-slate-400 text-[11px] font-sans">Rx:</span>
-              <span className="font-bold text-cyan-400 text-sm">
-                {latestPoint.rxGbps.toFixed(2)}
-              </span>
-              <span className="text-[10px] text-slate-500">{unit}</span>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode('port0')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'port0'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Porta 0 (Tx/Rx)</span>
+          </button>
 
-          {/* Peak Observed */}
-          <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-[11px]">
-            <Zap className="h-3.5 w-3.5 text-amber-400" />
-            <span>Pico:</span>
-            <span className="font-bold text-amber-300">{peakObserved.toFixed(2)} {unit}</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode('port1')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'port1'
+                ? 'bg-cyan-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5 text-cyan-400" />
+            <span>Porta 1 (Tx/Rx)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('both')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'both'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Visualizar as 4 curvas simultâneas (Port 0 Tx/Rx e Port 1 Tx/Rx)"
+          >
+            <Activity className="h-3.5 w-3.5 text-amber-400" />
+            <span>4 Vias (Simultâneo)</span>
+          </button>
         </div>
 
         {/* Dynamic Scale Switcher */}
@@ -311,7 +388,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
             Escala:
           </span>
 
-          {(['auto', 1, 5, 10, 25, 100] as const).map((sc) => (
+          {(['auto', 1, 5, 10, 25, 40, 100] as const).map((sc) => (
             <button
               key={String(sc)}
               type="button"
@@ -328,13 +405,125 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
         </div>
       </div>
 
+      {/* Real-time Telemetry Badges according to active viewMode */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-3">
+          {viewMode === 'aggregate' && (
+            <>
+              {/* Total Tx */}
+              <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Tx Total (P0+P1):</span>
+                  <span className="font-bold text-emerald-400 text-sm">{latestPoint.txGbps.toFixed(2)}</span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+
+              {/* Total Rx */}
+              <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Rx Total (P0+P1):</span>
+                  <span className="font-bold text-cyan-400 text-sm">{latestPoint.rxGbps.toFixed(2)}</span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+
+              {/* Aggregate Full-Duplex Throughput */}
+              <div className="hidden md:flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 text-[11px]">
+                <ArrowLeftRight className="h-3 w-3 text-sky-400" />
+                <span>Full-Duplex Total:</span>
+                <span className="font-bold text-sky-300">{(latestPoint.txGbps + latestPoint.rxGbps).toFixed(2)} {unit}</span>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'port0' && (
+            <>
+              <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Porta 0 Tx:</span>
+                  <span className="font-bold text-emerald-400 text-sm">
+                    {(latestPoint.p0TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Porta 0 Rx:</span>
+                  <span className="font-bold text-cyan-400 text-sm">
+                    {(latestPoint.p0RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'port1' && (
+            <>
+              <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Porta 1 Tx:</span>
+                  <span className="font-bold text-emerald-400 text-sm">
+                    {(latestPoint.p1TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-cyan-950/40 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
+                <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-slate-400 text-[11px] font-sans">Porta 1 Rx:</span>
+                  <span className="font-bold text-cyan-400 text-sm">
+                    {(latestPoint.p1RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{unit}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'both' && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P0 Tx: {(latestPoint.p0TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+              </span>
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-cyan-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P0 Rx: {(latestPoint.p0RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+              </span>
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> P1 Tx: {(latestPoint.p1TxGbps ?? latestPoint.txGbps / 2).toFixed(2)}
+              </span>
+              <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-purple-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" /> P1 Rx: {(latestPoint.p1RxGbps ?? latestPoint.rxGbps / 2).toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Peak Observed */}
+        <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+          <Zap className="h-3.5 w-3.5 text-amber-400" />
+          <span>Pico na Vista:</span>
+          <span className="font-bold text-amber-300">{peakObserved.toFixed(2)} {unit}</span>
+        </div>
+      </div>
+
       {/* Chart Canvas with absolute Tooltip Overlay */}
       <div className="relative">
         <canvas
           ref={canvasRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="w-full h-48 rounded-lg bg-slate-950/80 cursor-crosshair border border-slate-800/60 block"
+          className="w-full h-52 rounded-lg bg-slate-950/80 cursor-crosshair border border-slate-800/60 block"
         />
 
         {/* Floating Tooltip during Hover */}
@@ -342,48 +531,109 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({
           <div
             className="pointer-events-none absolute z-20 rounded-lg border border-slate-700 bg-slate-900/95 px-3 py-2 text-xs font-mono text-slate-100 shadow-2xl backdrop-blur-md transition-all duration-75"
             style={{
-              left: `${Math.min(hoverPos.x + 12, (containerRef.current?.clientWidth || 700) - 150)}px`,
-              top: `${Math.max(10, hoverPos.y - 70)}px`,
+              left: `${Math.min(hoverPos.x + 12, (containerRef.current?.clientWidth || 700) - 170)}px`,
+              top: `${Math.max(10, hoverPos.y - 85)}px`,
             }}
           >
             <div className="text-[10px] text-slate-400 pb-1 border-b border-slate-800 mb-1 flex items-center justify-between">
-              <span>Ponto no Tempo</span>
+              <span>Instante da Amostra</span>
               <span className="text-slate-500">{new Date(hoveredData.time).toLocaleTimeString()}</span>
             </div>
-            <div className="flex items-center justify-between gap-3 text-emerald-400">
-              <span className="text-[11px] font-sans flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Tx:
-              </span>
-              <span className="font-bold">{hoveredData.txGbps.toFixed(3)} Gbps</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-cyan-400">
-              <span className="text-[11px] font-sans flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> Rx:
-              </span>
-              <span className="font-bold">{hoveredData.rxGbps.toFixed(3)} Gbps</span>
-            </div>
+
+            {viewMode === 'aggregate' && (
+              <>
+                <div className="flex items-center justify-between gap-3 text-emerald-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Tx Total:
+                  </span>
+                  <span className="font-bold">{hoveredData.txGbps.toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-cyan-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> Rx Total:
+                  </span>
+                  <span className="font-bold">{hoveredData.rxGbps.toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-sky-300 pt-1 border-t border-slate-800/60 text-[10px]">
+                  <span>Full-Duplex:</span>
+                  <span className="font-bold">{(hoveredData.txGbps + hoveredData.rxGbps).toFixed(3)} Gbps</span>
+                </div>
+              </>
+            )}
+
+            {viewMode === 'port0' && (
+              <>
+                <div className="flex items-center justify-between gap-3 text-emerald-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P0 Tx:
+                  </span>
+                  <span className="font-bold">{(hoveredData.p0TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-cyan-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P0 Rx:
+                  </span>
+                  <span className="font-bold">{(hoveredData.p0RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+              </>
+            )}
+
+            {viewMode === 'port1' && (
+              <>
+                <div className="flex items-center justify-between gap-3 text-emerald-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> P1 Tx:
+                  </span>
+                  <span className="font-bold">{(hoveredData.p1TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-cyan-400">
+                  <span className="text-[11px] font-sans flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> P1 Rx:
+                  </span>
+                  <span className="font-bold">{(hoveredData.p1RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+              </>
+            )}
+
+            {viewMode === 'both' && (
+              <div className="space-y-0.5 text-[10px]">
+                <div className="flex justify-between gap-2 text-emerald-400">
+                  <span>P0 Tx:</span>
+                  <span className="font-bold">{(hoveredData.p0TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex justify-between gap-2 text-cyan-400">
+                  <span>P0 Rx:</span>
+                  <span className="font-bold">{(hoveredData.p0RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex justify-between gap-2 text-amber-400">
+                  <span>P1 Tx:</span>
+                  <span className="font-bold">{(hoveredData.p1TxGbps ?? hoveredData.txGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+                <div className="flex justify-between gap-2 text-purple-400">
+                  <span>P1 Rx:</span>
+                  <span className="font-bold">{(hoveredData.p1RxGbps ?? hoveredData.rxGbps / 2).toFixed(3)} Gbps</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Footer bar: Details & Active scale label */}
-      <div className="mt-2.5 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span className="text-slate-300">Injeção Tx (Mellanox 0)</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-cyan-400" />
-            <span className="text-slate-300">Retorno Rx (Mellanox 1)</span>
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-1 text-slate-400 font-sans">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-slate-300">Tráfego Bidirecional Simétrico:</span>
+            <span>Porta 0 (Tx ⇄ Rx) e Porta 1 (Tx ⇄ Rx)</span>
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span>Escala no Canvas:</span>
+          <span>Escala do Eixo Y:</span>
           <span className="font-bold text-sky-400">
             {effectiveMaxGbps.toFixed(effectiveMaxGbps < 10 ? 1 : 0)} Gbps
-            {scaleMode === 'auto' && ' (Auto-ajustada)'}
+            {scaleMode === 'auto' && ' (Auto-dinâmica)'}
           </span>
         </div>
       </div>
