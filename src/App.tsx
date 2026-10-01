@@ -8,6 +8,7 @@ import { ProfileEditorTab } from './components/ProfileEditorTab';
 import { ConsoleTab } from './components/ConsoleTab';
 import { ReportsTab } from './components/ReportsTab';
 import { SettingsTab } from './components/SettingsTab';
+import { NctLogo } from './components/NctLogo';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(() => ApiClient.getUser());
@@ -65,7 +66,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1e1f29] text-[#f8f8f2] flex flex-col font-sans selection:bg-[#bd93f9]/30 selection:text-[#50fa7b]">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-white">
       {/* If not logged in, show Login Modal */}
       {!user ? (
         <LoginModal onSuccess={handleLoginSuccess} />
@@ -109,15 +110,18 @@ export default function App() {
             )}
           </main>
 
-          {/* Footer */}
-          <footer className="border-t border-[#44475a]/60 bg-[#191a21] py-3 px-4 text-center text-xs text-[#6272a4] font-mono">
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#50fa7b]" />
-                <span>Cisco TRex v3.08 Control Plane • Servidor: {status?.serverIp || '10.69.70.20'}</span>
+          {/* Corporate Footer with NCT Informática */}
+          <footer className="border-t border-slate-800/80 bg-slate-900/90 py-3 px-4 text-xs text-slate-400 font-mono">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <NctLogo className="h-4 text-slate-300" />
+                <span className="text-slate-300 font-semibold">NCT Informática</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-slate-400 text-[11px]">Plataforma de Alta Performance DPDK</span>
               </div>
-              <div className="text-[11px] text-[#6272a4]">
-                Arquitetura Desacoplada: Frontend React + Backend Node.js Express (JWT & spawn seguro)
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span>Cisco TRex v3.08 • Host: {status?.serverIp || '10.69.70.20'}</span>
               </div>
             </div>
           </footer>
