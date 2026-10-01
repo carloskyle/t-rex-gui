@@ -275,8 +275,8 @@ export const TrexTuiConsole: React.FC<TuiView & any> = ({ status, user }: TrexTu
 
               <div className="flex justify-between border-b border-slate-900 py-0.5">
                 <span className="text-slate-400">Total Drop Rate:</span>
-                <span className={`font-bold ${(data?.metrics.dropRatePercent || 0) > 0.01 ? 'text-red-400' : 'text-emerald-400'}`}>
-                  {(data?.metrics.dropRatePercent ?? 0).toFixed(4)}% (0 bps)
+                <span className={`font-bold ${(data?.metrics.dropRatePercent || 0) > 0.0001 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {(data?.metrics.dropRatePercent ?? 0).toFixed(4)}% {((data?.metrics.dropRatePercent || 0) > 0.0001) ? `(${formatRateBps((totalTxBps * (data?.metrics.dropRatePercent || 0)) / 100)})` : '(0 bps - Zero Loss)'}
                 </span>
               </div>
               <div className="flex justify-between border-b border-slate-900 py-0.5">
