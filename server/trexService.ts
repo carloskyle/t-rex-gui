@@ -442,6 +442,8 @@ class TRexManager {
       rxMpps: 0,
       cpuUtilPercent: 0,
       dropRatePercent: 0,
+      rxDropBps: 0,
+      rxDropPps: 0,
       latencyMinMs: 0,
       latencyAvgMs: 0,
       latencyMaxMs: 0,
@@ -819,6 +821,8 @@ while True:
         rx_bps = float(tot.get('rx_bps', 0))
         tx_pps = float(tot.get('tx_pps', 0))
         rx_pps = float(tot.get('rx_pps', 0))
+        rx_drop_bps = float(tot.get('rx_drop_bps') or glob.get('rx_drop_bps') or 0.0)
+        rx_drop_pps = float(tot.get('rx_drop_pps') or glob.get('rx_drop_pps') or 0.0)
 
         p0_tx = float(p0.get('tx_bps', 0))
         p0_rx = float(p0.get('rx_bps', 0))
@@ -862,6 +866,8 @@ while True:
             'rx_bps': rx_bps,
             'tx_pps': tx_pps,
             'rx_pps': rx_pps,
+            'rx_drop_bps': rx_drop_bps,
+            'rx_drop_pps': rx_drop_pps,
             'opackets': int(tot.get('opackets', 0)),
             'ipackets': int(tot.get('ipackets', 0)),
             'ierrors': int(tot.get('ierrors', 0)),
@@ -967,26 +973,21 @@ while True:
     const ierrors = Number(data.ierrors || 0);
     const oerrors = Number(data.oerrors || 0);
 
-    // In RFC 2544 & TRex DPDK standard:
-    // Packet drops are physical buffer overruns (ierrors/oerrors) or cumulative unreceived packets.
-    // Instantaneous txPps vs rxPps differences of a few ms are NOT drops.
-    let drops = 0;
+    const rxDropBps = Number(data.rx_drop_bps || 0);
+    const rxDropPps = Number(data.rx_drop_pps || 0);
+
+    // Official TRex engine drop rate (100% aligned with trex-console CLI):
+    // Uses TRex's native rx_drop_bps and rx_drop_pps directly from the DPDK engine.
+    // When TRex reports 0 bps, dropRate is strictly 0.0000% (Zero-Loss).
+    let drops = rxDropPps;
     let dropRatePercent = 0;
 
-    const hwErrors = ierrors + oerrors;
-    if (hwErrors > 0) {
-      drops = hwErrors;
-      dropRatePercent = opackets > 0 ? Math.min(100, (drops / opackets) * 100) : 0;
-    } else if (opackets > 0 && ipackets > 0) {
-      // Only count if cumulative missing packets exceed in-flight buffer tolerance
-      const diff = opackets - ipackets;
-      if (diff > Math.max(2000, txPps * 0.5)) {
-        drops = diff;
-        dropRatePercent = Math.min(100, (drops / opackets) * 100);
-      } else {
-        drops = 0;
-        dropRatePercent = 0;
-      }
+    if (rxDropBps > 0 && txBps > 0) {
+      dropRatePercent = Math.min(100, (rxDropBps / txBps) * 100);
+      drops = rxDropPps > 0 ? rxDropPps : Math.round((rxDropBps / txBps) * txPps);
+    } else if (ierrors + oerrors > 0 && opackets > 0) {
+      drops = ierrors + oerrors;
+      dropRatePercent = Math.min(100, (drops / opackets) * 100);
     } else {
       drops = 0;
       dropRatePercent = 0;
@@ -1003,6 +1004,8 @@ while True:
       rxMpps,
       cpuUtilPercent: cpuUtil,
       dropRatePercent,
+      rxDropBps,
+      rxDropPps,
       latencyMinMs: 0.015,
       latencyAvgMs: 0.022,
       latencyMaxMs: 0.045,
@@ -1124,7 +1127,9 @@ while True:
         txMpps: currentPps / 1e6,
         rxMpps: rxPps / 1e6,
         cpuUtilPercent: cpuUtil,
-        dropRatePercent: currentPps > 0 ? (dropCount / currentPps) * 100 : 0,
+        dropRatePercent: 0,
+        rxDropBps: 0,
+        rxDropPps: 0,
         latencyMinMs: latMin,
         latencyAvgMs: latAvg,
         latencyMaxMs: latMax,

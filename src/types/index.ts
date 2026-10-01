@@ -53,6 +53,8 @@ export interface TRexMetrics {
   rxMpps: number;
   cpuUtilPercent: number;
   dropRatePercent: number;
+  rxDropBps?: number;
+  rxDropPps?: number;
   latencyMinMs: number;
   latencyAvgMs: number;
   latencyMaxMs: number;
