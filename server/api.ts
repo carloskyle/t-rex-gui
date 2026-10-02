@@ -11,7 +11,7 @@ import {
 } from './auth.js';
 import { listProfiles, readProfile, saveProfile, ALLOWED_DIRS, AllowedDir, isValidProfileFilename } from './profilesService.js';
 import { trexManager } from './trexService.js';
-import { getAllReports, getReportById, deleteReport, exportReportAsCsv, exportReportAsMarkdown } from './reportsService.js';
+import { getAllReports, getReportById, updateReport, deleteReport, exportReportAsCsv, exportReportAsMarkdown } from './reportsService.js';
 
 export const app = express();
 
@@ -262,6 +262,27 @@ app.get('/api/reports/:id', requireAuth, (req: AuthenticatedRequest, res: Respon
       return;
     }
     res.json(report);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/reports/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { dutName, dutModel, dutFirmware, topologyImage, notes } = req.body;
+    const updated = updateReport(req.params.id, {
+      dutName,
+      dutModel,
+      dutFirmware,
+      topologyImage,
+      notes,
+    });
+    if (!updated) {
+      res.status(404).json({ error: 'Relatório não encontrado.' });
+      return;
+    }
+    trexManager.addLog(`[REPORT] Topologia e parâmetros de PoC atualizados no relatório ${req.params.id} por ${req.user?.username}`);
+    res.json({ success: true, report: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

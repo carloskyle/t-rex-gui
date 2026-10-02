@@ -23,14 +23,10 @@ import {
   Check,
   Server,
   FileText,
-  Trash2,
   ArrowDownCircle,
   Search,
   ChevronDown,
   ChevronUp,
-  Copy,
-  BookOpen,
-  Info,
 } from 'lucide-react';
 import { TRexStatus, ProfileItem } from '../types';
 import { ApiClient } from '../services/api';
@@ -94,8 +90,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const [autoScrollLogs, setAutoScrollLogs] = useState<boolean>(true);
   const [logsFilter, setLogsFilter] = useState<string>('');
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false); // Closed by default as requested
-  const [copiedLogs, setCopiedLogs] = useState<boolean>(false);
-  const logsBottomRef = useRef<HTMLDivElement | null>(null);
+  const consoleBodyRef = useRef<HTMLDivElement | null>(null);
 
   // Poll live execution logs every 1.5s
   useEffect(() => {
@@ -119,32 +114,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     };
   }, []);
 
-  // Auto-scroll logs to bottom
+  // Auto-scroll logs strictly within the console container (prevents whole page from scrolling)
   useEffect(() => {
-    if (autoScrollLogs && logsBottomRef.current) {
-      logsBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (autoScrollLogs && consoleBodyRef.current) {
+      consoleBodyRef.current.scrollTop = consoleBodyRef.current.scrollHeight;
     }
   }, [liveLogs, autoScrollLogs]);
-
-  const handleClearLiveLogs = async () => {
-    try {
-      await ApiClient.executeAction({ action: 'clear' });
-      setLiveLogs([
-        `[LOGS] Buffer de console limpo pelo operador.`,
-        `[STATUS] Aguardando novas transmissões do motor TRex...`,
-      ]);
-      setActionFeedback({ type: 'success', message: 'Buffer de logs limpo com sucesso.' });
-    } catch (err: any) {
-      setActionFeedback({ type: 'error', message: err.message || 'Erro ao limpar logs.' });
-    }
-  };
-
-  const handleCopyLogs = () => {
-    const text = liveLogs.join('\n');
-    navigator.clipboard.writeText(text);
-    setCopiedLogs(true);
-    setTimeout(() => setCopiedLogs(false), 2000);
-  };
 
   // Filter logs
   const filteredLogs = logsFilter.trim()
@@ -726,33 +701,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   <ArrowDownCircle className="h-3 w-3" aria-hidden="true" />
                   <span className="hidden sm:inline">Scroll</span>
                 </button>
-
-                {/* Copy logs */}
-                <button
-                  type="button"
-                  onClick={handleCopyLogs}
-                  title="Copiar logs para a área de transferência"
-                  className="h-7 px-2 rounded-md border border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 hover:border-slate-700 text-[11px] font-mono flex items-center gap-1 transition cursor-pointer"
-                >
-                  <Copy className="h-3 w-3" aria-hidden="true" />
-                  <span className="hidden sm:inline">{copiedLogs ? 'Copiado!' : 'Copiar'}</span>
-                </button>
-
-                {/* Clear logs */}
-                <button
-                  type="button"
-                  onClick={handleClearLiveLogs}
-                  title="Limpar buffer de logs do console"
-                  className="h-7 px-2 rounded-md border border-slate-800 bg-slate-950 text-slate-400 hover:text-red-400 hover:border-red-900/50 text-[11px] font-mono flex items-center gap-1 transition cursor-pointer"
-                >
-                  <Trash2 className="h-3 w-3" aria-hidden="true" />
-                </button>
               </div>
             </div>
 
             {/* Terminal Body Screen */}
             <div
-              className="mt-2.5 flex-1 min-h-0 overflow-y-auto rounded-lg bg-[#07090e] border border-slate-800/90 p-3 font-mono text-[11px] leading-relaxed space-y-1 select-text"
+              ref={consoleBodyRef}
+              className="mt-2.5 flex-1 min-h-0 overflow-y-auto rounded-lg bg-[#07090e] border border-slate-800/90 p-3 font-mono text-[11px] leading-relaxed space-y-1 select-text scrollbar-thin scrollbar-thumb-slate-700"
               role="log"
               aria-live="polite"
               aria-label="Terminal de logs de execução do TRex"
@@ -785,7 +740,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   );
                 })
               )}
-              <div ref={logsBottomRef} />
             </div>
 
             {/* Console Footer */}

@@ -202,6 +202,19 @@ export class ApiClient {
     return res.json();
   }
 
+  public static async updateReport(id: string, updates: Partial<TestReport>): Promise<{ success: boolean; report: TestReport }> {
+    const res = await fetch(`/api/reports/${id}`, {
+      method: 'PATCH',
+      headers: ApiClient.getHeaders(),
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao atualizar relatório' }));
+      throw new Error(err.error || 'Falha ao atualizar relatório');
+    }
+    return res.json();
+  }
+
   public static async deleteReport(id: string): Promise<void> {
     const res = await fetch(`/api/reports/${id}`, {
       method: 'DELETE',

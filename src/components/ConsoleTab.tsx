@@ -17,7 +17,7 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
   const [filterText, setFilterText] = useState<string>('');
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const rawLogContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Sync status if passed as prop, or fetch periodically
   useEffect(() => {
@@ -46,8 +46,8 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
   }, []);
 
   useEffect(() => {
-    if (autoScroll && bottomRef.current && consoleMode === 'raw') {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (autoScroll && rawLogContainerRef.current && consoleMode === 'raw') {
+      rawLogContainerRef.current.scrollTop = rawLogContainerRef.current.scrollHeight;
     }
   }, [logs, autoScroll, consoleMode]);
 
@@ -221,6 +221,7 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
             </div>
 
             <div
+              ref={rawLogContainerRef}
               role="log"
               aria-live="polite"
               aria-label="Linhas de log do console TRex"
@@ -255,7 +256,6 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = ({ status: initialStatus, u
                   );
                 })
               )}
-              <div ref={bottomRef} />
             </div>
           </div>
         </div>

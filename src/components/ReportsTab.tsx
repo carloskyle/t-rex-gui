@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   Download,
@@ -16,9 +16,17 @@ import {
   FileSpreadsheet,
   FileCode2,
   Printer,
+  Image as ImageIcon,
+  Upload,
+  Save,
+  Check,
+  Network,
+  X,
+  GitCompare,
 } from 'lucide-react';
 import { ApiClient } from '../services/api';
 import { TestReport } from '../types';
+import { CompareReportsModal } from './CompareReportsModal';
 
 export const ReportsTab: React.FC = () => {
   const [reports, setReports] = useState<TestReport[]>([]);
@@ -26,6 +34,73 @@ export const ReportsTab: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedReport, setSelectedReport] = useState<TestReport | null>(null);
+
+  // Compare A/B states
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState<boolean>(false);
+  const [compareReportAId, setCompareReportAId] = useState<string | null>(null);
+  const [compareReportBId, setCompareReportBId] = useState<string | null>(null);
+
+  // DUT & Topology states for inspection modal
+  const [dutName, setDutName] = useState<string>('');
+  const [dutModel, setDutModel] = useState<string>('');
+  const [dutFirmware, setDutFirmware] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [topologyImage, setTopologyImage] = useState<string | null>(null);
+  const [isSavingDut, setIsSavingDut] = useState<boolean>(false);
+  const [dutSaveFeedback, setDutSaveFeedback] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync DUT & Topology when opening report
+  useEffect(() => {
+    if (selectedReport) {
+      setDutName(selectedReport.dutName || '');
+      setDutModel(selectedReport.dutModel || '');
+      setDutFirmware(selectedReport.dutFirmware || '');
+      setNotes(selectedReport.notes || '');
+      setTopologyImage(selectedReport.topologyImage || null);
+      setDutSaveFeedback(null);
+    }
+  }, [selectedReport]);
+
+  const handleSaveDutAndTopology = async () => {
+    if (!selectedReport) return;
+    setIsSavingDut(true);
+    setDutSaveFeedback(null);
+    try {
+      const res = await ApiClient.updateReport(selectedReport.id, {
+        dutName: dutName.trim() || undefined,
+        dutModel: dutModel.trim() || undefined,
+        dutFirmware: dutFirmware.trim() || undefined,
+        notes: notes.trim() || undefined,
+        topologyImage: topologyImage || undefined,
+      });
+
+      setSelectedReport(res.report);
+      setReports((prev) => prev.map((r) => (r.id === res.report.id ? res.report : r)));
+      setDutSaveFeedback('Topologia e dados do DUT atualizados com sucesso no laudo!');
+      setTimeout(() => setDutSaveFeedback(null), 4000);
+    } catch (err: any) {
+      setDutSaveFeedback(`Erro ao salvar: ${err.message}`);
+    } finally {
+      setIsSavingDut(false);
+    }
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem da topologia deve ter no máximo 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTopologyImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const fetchReports = async () => {
     setIsLoading(true);
@@ -37,6 +112,43 @@ export const ReportsTab: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleToggleCompare = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedForCompare((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      }
+      if (prev.length >= 2) {
+        return [prev[1], id];
+      }
+      return [...prev, id];
+    });
+  };
+
+  const handleOpenCompare = (aId?: string, bId?: string) => {
+    if (reports.length < 2) {
+      alert('São necessários pelo menos 2 relatórios no histórico para realizar uma comparação.');
+      return;
+    }
+
+    const firstId = aId || selectedForCompare[0] || reports[0]?.id;
+    let secondId = bId || selectedForCompare[1];
+
+    if (!secondId || secondId === firstId) {
+      const other = reports.find((r) => r.id !== firstId);
+      secondId = other ? other.id : reports[1]?.id;
+    }
+
+    setCompareReportAId(firstId);
+    setCompareReportBId(secondId);
+    setIsCompareModalOpen(true);
+  };
+
+  const handleSwapCompare = () => {
+    setCompareReportAId(compareReportBId);
+    setCompareReportBId(compareReportAId);
   };
 
   useEffect(() => {
@@ -257,7 +369,7 @@ export const ReportsTab: React.FC = () => {
     </div>
   </div>
 
-  <div class="section-title">1. Parâmetros de Execução do Teste</div>
+  <div class="section-title">1. Parâmetros de Execução do Teste & Equipamento Sob Teste (DUT)</div>
   <table>
     <tr>
       <th>Perfil de Tráfego</th>
@@ -268,18 +380,50 @@ export const ReportsTab: React.FC = () => {
     <tr>
       <th>Multiplicador de Taxa (-m)</th>
       <td class="mono font-bold text-blue">${report.multiplier}</td>
-      <th>Portas Físicas Alocadas</th>
-      <td class="mono">Porta 0 & Porta 1 (Full-Duplex)</td>
+      <th>Distribuição de Frame</th>
+      <td class="mono font-bold">${report.profile.includes('imix') ? 'IMIX Ponderado (64B, 570B, 1518B)' : `${tech?.avgFrameSizeBytes ?? 384} Bytes (Média)`}</td>
     </tr>
     <tr>
-      <th>Servidor de Execução</th>
-      <td class="mono">${report.serverType} (t-rex-64 DPDK v3.08)</td>
-      <th>Status da Sessão</th>
-      <td><strong class="text-green">${report.status}</strong></td>
+      <th>Equipamento Sob Teste (DUT)</th>
+      <td class="mono"><strong>${report.dutName || 'Dispositivo Sob Homologação'}</strong> ${report.dutModel ? `(${report.dutModel})` : ''}</td>
+      <th>Firmware / Versão OS</th>
+      <td class="mono">${report.dutFirmware || 'Versão Homologada'}</td>
+    </tr>
+    <tr>
+      <th>Placa Geradora TRex</th>
+      <td class="mono"><strong>Intel X520-DA2 (Dual 10GbE SFP+)</strong></td>
+      <th>Driver DPDK</th>
+      <td class="mono">librte_pmd_ixgbe / vfio-pci</td>
     </tr>
   </table>
 
-  <div class="section-title">2. Métricas de Throughput por Camada (L1 / L2 / L3)</div>
+  <div class="section-title">2. Topologia de Rede do Teste de PoC</div>
+  ${report.topologyImage ? `
+    <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; text-align: center; background: #f8fafc; margin-bottom: 14px;">
+      <img src="${report.topologyImage}" style="max-width: 100%; max-height: 230px; object-fit: contain; border-radius: 4px;" alt="Topologia do Teste" />
+      <div style="font-size: 8pt; color: #475569; margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
+        Topologia Física de Bancada: Cisco TRex (Intel X520-DA2 [Port 0 / Port 1]) ⇄ DUT (${report.dutName || 'Equipamento Sob Teste'})
+      </div>
+      ${report.notes ? `<div style="font-size: 8pt; color: #0369a1; margin-top: 3px; font-style: italic;">Notas Técnicas: ${report.notes}</div>` : ''}
+    </div>
+  ` : `
+    <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; background: #f8fafc; margin-bottom: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8.5pt; color: #334155;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px;">
+        <div><strong>TRex Port 0 (Tx)</strong><br><span style="font-size: 7.5pt; color: #64748b;">16.0.0.1 (Intel X520-DA2)</span></div>
+        <div style="color: #0284c7; font-weight: bold;">── 10Gbps SFP+ ──►</div>
+        <div style="text-align: center; background: #f1f5f9; padding: 6px 16px; border-radius: 4px; border: 1px dashed #94a3b8;">
+          <strong>DUT: ${report.dutName || 'Equipamento Sob Teste'}</strong><br>
+          <span style="font-size: 7.5pt; color: #64748b;">${report.dutModel || 'Switch / Roteador / Firewall'}</span>
+        </div>
+        <div style="color: #0284c7; font-weight: bold;">── 10Gbps SFP+ ──►</div>
+        <div><strong>TRex Port 1 (Rx)</strong><br><span style="font-size: 7.5pt; color: #64748b;">48.0.0.1 (Intel X520-DA2)</span></div>
+      </div>
+      <div style="font-size: 7.5pt; color: #64748b; margin-top: 6px; text-align: center;">Topologia Full-Duplex RFC 2544: Verificação de Throughput, Latência e Perda de Quadros</div>
+      ${report.notes ? `<div style="font-size: 8pt; color: #0369a1; margin-top: 4px; text-align: center;">Notas: ${report.notes}</div>` : ''}
+    </div>
+  `}
+
+  <div class="section-title">3. Métricas de Throughput por Camada (L1 / L2 / L3)</div>
   <table>
     <thead>
       <tr>
@@ -317,7 +461,7 @@ export const ReportsTab: React.FC = () => {
     </tbody>
   </table>
 
-  <div class="section-title">3. Auditoria de Contadores Absolutos & Integridade</div>
+  <div class="section-title">4. Auditoria de Contadores Absolutos & Integridade</div>
   <table>
     <thead>
       <tr>
@@ -343,7 +487,7 @@ export const ReportsTab: React.FC = () => {
     </tbody>
   </table>
 
-  <div class="section-title">4. Latência, Jitter e Recursos de Hardware</div>
+  <div class="section-title">5. Latência, Jitter e Recursos de Hardware</div>
   <table>
     <tr>
       <th>Latência Mínima (RTT)</th>
@@ -361,11 +505,11 @@ export const ReportsTab: React.FC = () => {
       <th>Latência Máxima (Pico)</th>
       <td class="mono">${tech?.latencyMaxUs ?? Math.round(report.summary.maxLatencyMs * 1000)} µs (${report.summary.maxLatencyMs.toFixed(3)} ms)</td>
       <th>Erros Anéis PCIe (NIC)</th>
-      <td class="mono font-bold text-green">ierrors: 0 / oerrors: 0 (100% íntegro)</td>
+      <td class="mono font-bold text-green">ierrors: 0 / oerrors: 0 (Intel 82599ES 100% íntegro)</td>
     </tr>
   </table>
 
-  <div class="section-title">5. Interfaces Físicas de Rede (Mellanox / Intel DPDK)</div>
+  <div class="section-title">6. Interfaces Físicas de Rede (Intel X520-DA2 DPDK)</div>
   <table>
     <thead>
       <tr>
@@ -380,7 +524,7 @@ export const ReportsTab: React.FC = () => {
     <tbody>
       <tr>
         <td><strong>Porta 0</strong> (Full-Duplex)</td>
-        <td class="mono">${report.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} (${report.detailedPorts?.[0]?.driver || 'mlx5_core'})</td>
+        <td class="mono">${report.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} (Intel X520-DA2 / librte_pmd_ixgbe)</td>
         <td class="mono font-bold text-green">${(report.detailedPorts?.[0]?.avgTxGbps ?? report.summary.avgTxGbps / 2).toFixed(2)} Gbps</td>
         <td class="mono font-bold text-blue">${(report.detailedPorts?.[0]?.avgRxGbps ?? report.summary.avgRxGbps / 2).toFixed(2)} Gbps</td>
         <td class="mono">${(report.detailedPorts?.[0]?.totalTxPkts ?? Math.round(report.summary.totalPacketsTx / 2)).toLocaleString()}</td>
@@ -388,7 +532,7 @@ export const ReportsTab: React.FC = () => {
       </tr>
       <tr>
         <td><strong>Porta 1</strong> (Full-Duplex)</td>
-        <td class="mono">${report.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} (${report.detailedPorts?.[1]?.driver || 'mlx5_core'})</td>
+        <td class="mono">${report.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} (Intel X520-DA2 / librte_pmd_ixgbe)</td>
         <td class="mono font-bold text-green">${(report.detailedPorts?.[1]?.avgTxGbps ?? report.summary.avgTxGbps / 2).toFixed(2)} Gbps</td>
         <td class="mono font-bold text-blue">${(report.detailedPorts?.[1]?.avgRxGbps ?? report.summary.avgRxGbps / 2).toFixed(2)} Gbps</td>
         <td class="mono">${(report.detailedPorts?.[1]?.totalTxPkts ?? Math.round(report.summary.totalPacketsTx / 2)).toLocaleString()}</td>
@@ -551,6 +695,17 @@ export const ReportsTab: React.FC = () => {
           </select>
 
           <button
+            type="button"
+            onClick={() => handleOpenCompare()}
+            disabled={reports.length < 2}
+            className="flex items-center gap-1.5 rounded-lg border border-purple-500/50 bg-purple-500/15 px-3.5 h-9 text-xs font-semibold text-purple-300 hover:bg-purple-500/25 hover:border-purple-400 transition cursor-pointer disabled:opacity-40"
+            title="Comparar dois testes de tráfego (Diff A/B)"
+          >
+            <GitCompare className="h-4 w-4" />
+            <span>Comparar (Diff)</span>
+          </button>
+
+          <button
             onClick={fetchReports}
             className="rounded-lg border border-slate-700/80 bg-slate-950 px-3.5 h-9 text-xs font-semibold text-sky-300 hover:text-white hover:bg-slate-800/80 hover:border-slate-600 transition cursor-pointer"
           >
@@ -559,11 +714,54 @@ export const ReportsTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Floating Compare Selection Banner */}
+      {selectedForCompare.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-500/50 bg-purple-950/60 p-3.5 shadow-lg shadow-purple-950/30 text-xs font-mono text-purple-200">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-purple-300">
+              <GitCompare className="h-4 w-4" />
+            </div>
+            <div>
+              <span>
+                <strong>{selectedForCompare.length} de 2</strong> testes selecionados para comparação:
+              </span>
+              <span className="ml-1.5 text-purple-300 font-bold">
+                {selectedForCompare.map((id) => id.slice(0, 14)).join(' vs. ')}
+              </span>
+              {selectedForCompare.length === 1 && (
+                <span className="ml-2 text-slate-400 text-[11px]">(Marque mais um relatório na tabela)</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selectedForCompare.length === 2 && (
+              <button
+                type="button"
+                onClick={() => handleOpenCompare(selectedForCompare[0], selectedForCompare[1])}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-purple-500 active:scale-[0.98] transition cursor-pointer shadow-md shadow-purple-900/50"
+              >
+                <GitCompare className="h-3.5 w-3.5" />
+                <span>Comparar Agora (Diff A/B)</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedForCompare([])}
+              className="px-2 py-1 text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+            >
+              Desmarcar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Reports Table with Perfect Alignment */}
       <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-900/90 shadow-xl">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-slate-800/90 bg-slate-950 font-mono text-[11px] text-slate-400 uppercase tracking-wider">
             <tr>
+              <th className="w-12 px-3 py-3 text-center" title="Marque dois relatórios para comparar (Diff A/B)">Diff</th>
               <th className="px-4 py-3 text-left">Data / Hora</th>
               <th className="px-4 py-3 text-left">Perfil & Pasta</th>
               <th className="px-4 py-3 text-left">Taxa / Duração</th>
@@ -577,13 +775,13 @@ export const ReportsTab: React.FC = () => {
           <tbody className="divide-y divide-slate-800/60 font-mono">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-xs text-slate-400">
+                <td colSpan={9} className="p-8 text-center text-xs text-slate-400">
                   Carregando relatórios...
                 </td>
               </tr>
             ) : filteredReports.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-xs text-slate-400">
+                <td colSpan={9} className="p-8 text-center text-xs text-slate-400">
                   Nenhum relatório encontrado no histórico.
                 </td>
               </tr>
@@ -592,8 +790,21 @@ export const ReportsTab: React.FC = () => {
                 <tr
                   key={report.id}
                   onClick={() => setSelectedReport(report)}
-                  className="hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
+                  className={`hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer ${
+                    selectedForCompare.includes(report.id) ? 'bg-purple-950/20 border-l-2 border-purple-500' : ''
+                  }`}
                 >
+                  {/* Diff Checkbox */}
+                  <td className="w-12 px-3 py-3 text-center" onClick={(e) => handleToggleCompare(report.id, e)}>
+                    <input
+                      type="checkbox"
+                      checked={selectedForCompare.includes(report.id)}
+                      onChange={() => {}}
+                      aria-label={`Selecionar relatório ${report.id} para comparação A/B`}
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                  </td>
+
                   {/* Descriptive text Left-Aligned */}
                   <td className="px-4 py-3 whitespace-nowrap text-slate-200 text-left">
                     <div className="flex items-center gap-1.5 font-medium">
@@ -711,6 +922,18 @@ export const ReportsTab: React.FC = () => {
 
                       <button
                         type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenCompare(report.id);
+                        }}
+                        title="Comparar este teste com outro (Diff A/B)"
+                        className="rounded-lg p-1.5 text-slate-500 hover:text-purple-400 hover:bg-purple-500/15 transition-all duration-150 cursor-pointer"
+                      >
+                        <GitCompare className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={(e) => handleDelete(report.id, e)}
                         title="Excluir relatório"
                         className="rounded-lg p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/15 transition-all duration-150 cursor-pointer"
@@ -782,6 +1005,16 @@ export const ReportsTab: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => handleOpenCompare(selectedReport.id)}
+                  className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-1.5 text-xs text-purple-300 hover:bg-purple-900/60 hover:text-white transition cursor-pointer font-semibold shadow-sm"
+                  title="Comparar este laudo com outro teste (Diff A/B)"
+                >
+                  <GitCompare className="h-3.5 w-3.5 text-purple-400" />
+                  <span>Comparar (Diff)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setSelectedReport(null)}
                   className="rounded-lg border border-[#44475a] px-3 py-1.5 text-xs text-[#6272a4] hover:text-[#f8f8f2] cursor-pointer"
                 >
@@ -807,6 +1040,164 @@ export const ReportsTab: React.FC = () => {
               <div>
                 <span className="text-[#6272a4] block text-[10px]">DURAÇÃO DE TESTE:</span>
                 <span className="text-[#ff79c6]">{selectedReport.duration}s</span>
+              </div>
+            </div>
+
+            {/* PoC DUT & Topology Diagram Editor Section */}
+            <div className="rounded-xl border border-[#44475a] bg-[#1e1f29] p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#44475a]/70 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                    <Network className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#f8f8f2] font-mono">
+                      Topologia de Bancada & Equipamento Sob Teste (DUT)
+                    </h4>
+                    <p className="text-[11px] text-[#6272a4]">
+                      Personalize o DUT e anexe a imagem do diagrama de topologia para o laudo oficial em PDF
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {dutSaveFeedback && (
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 animate-in fade-in">
+                      {dutSaveFeedback}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSaveDutAndTopology}
+                    disabled={isSavingDut}
+                    className="flex items-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/25 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    <span>{isSavingDut ? 'Salvando...' : 'Salvar Topologia / DUT'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* DUT Identification Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                <div>
+                  <label className="text-[10px] text-[#6272a4] uppercase font-bold block mb-1">
+                    Equipamento (DUT):
+                  </label>
+                  <input
+                    type="text"
+                    value={dutName}
+                    onChange={(e) => setDutName(e.target.value)}
+                    placeholder="Ex: Switch Huawei CE6857 / FortiGate 600F"
+                    className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-1.5 text-xs text-[#f8f8f2] placeholder:text-[#6272a4] focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#6272a4] uppercase font-bold block mb-1">
+                    Modelo / Código:
+                  </label>
+                  <input
+                    type="text"
+                    value={dutModel}
+                    onChange={(e) => setDutModel(e.target.value)}
+                    placeholder="Ex: CE6857-48T6CQ / FG-600F-BD"
+                    className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-1.5 text-xs text-[#f8f8f2] placeholder:text-[#6272a4] focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#6272a4] uppercase font-bold block mb-1">
+                    Firmware / Versão OS:
+                  </label>
+                  <input
+                    type="text"
+                    value={dutFirmware}
+                    onChange={(e) => setDutFirmware(e.target.value)}
+                    placeholder="Ex: VRP 8.21.0 / FortiOS 7.4.2"
+                    className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-1.5 text-xs text-[#f8f8f2] placeholder:text-[#6272a4] focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Notes Field */}
+              <div>
+                <label className="text-[10px] text-[#6272a4] uppercase font-bold block mb-1 font-mono">
+                  Notas Técnicas da PoC:
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: Teste de estresse RFC 2544 em portas 10G SFP+ em Full-Duplex, MTU 1500"
+                  className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-1.5 text-xs text-[#f8f8f2] placeholder:text-[#6272a4] focus:border-sky-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              {/* Topology Image Upload & Preview */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] text-[#6272a4] uppercase font-bold block font-mono">
+                    Imagem da Topologia de Rede:
+                  </label>
+                  {topologyImage && (
+                    <button
+                      type="button"
+                      onClick={() => setTopologyImage(null)}
+                      className="text-[11px] text-red-400 hover:text-red-300 font-mono flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                      <span>Remover Imagem</span>
+                    </button>
+                  )}
+                </div>
+
+                {topologyImage ? (
+                  <div className="rounded-lg border border-[#44475a] bg-[#282a36] p-3 text-center space-y-2">
+                    <div className="max-h-56 overflow-hidden rounded bg-[#1e1f29] flex items-center justify-center p-2 border border-[#44475a]/60">
+                      <img
+                        src={topologyImage}
+                        alt="Topologia do Teste"
+                        className="max-h-52 max-w-full object-contain rounded"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-[#6272a4] font-mono px-1">
+                      <span>Diagrama anexado • Pronto para inclusão no laudo PDF</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                      >
+                        Substituir Imagem...
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-lg border-2 border-dashed border-[#44475a] hover:border-sky-400/60 bg-[#282a36]/60 hover:bg-[#282a36] p-5 text-center cursor-pointer transition space-y-2"
+                  >
+                    <div className="flex justify-center text-slate-500">
+                      <div className="h-10 w-10 rounded-full bg-[#1e1f29] border border-[#44475a] flex items-center justify-center text-sky-400">
+                        <Upload className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="text-xs font-medium text-[#f8f8f2]">
+                      Clique para selecionar a imagem da topologia de teste
+                    </div>
+                    <div className="text-[10px] text-[#6272a4] font-mono">
+                      Formatos suportados: PNG, JPG, WebP, SVG (Máximo 5MB). O diagrama será inserido diretamente no PDF impresso.
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageFileChange}
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                />
               </div>
             </div>
 
@@ -981,10 +1372,10 @@ export const ReportsTab: React.FC = () => {
                   <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
                     <tr>
                       <td className="px-3 py-2 font-bold text-[#8be9fd]">
-                        Porta 0 (Full-Duplex)
+                        Intel X520-DA2 Porta 0 (Tx/Rx)
                       </td>
                       <td className="px-3 py-2 text-[11px] text-[#6272a4]">
-                        {selectedReport.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} ({selectedReport.detailedPorts?.[0]?.driver || 'mlx5_core'})
+                        {selectedReport.detailedPorts?.[0]?.pciAddress || '0000:03:00.0'} ({selectedReport.detailedPorts?.[0]?.driver || 'librte_pmd_ixgbe / vfio-pci'})
                       </td>
                       <td className="px-3 py-2 text-[#50fa7b] font-bold">
                         {selectedReport.detailedPorts?.[0]?.avgTxGbps?.toFixed(2) || ((selectedReport.summary?.avgTxGbps || 0) / 2).toFixed(2)} Gbps
@@ -1006,10 +1397,10 @@ export const ReportsTab: React.FC = () => {
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-bold text-[#bd93f9]">
-                        Porta 1 (Full-Duplex)
+                        Intel X520-DA2 Porta 1 (Rx/Tx)
                       </td>
                       <td className="px-3 py-2 text-[11px] text-[#6272a4]">
-                        {selectedReport.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} ({selectedReport.detailedPorts?.[1]?.driver || 'mlx5_core'})
+                        {selectedReport.detailedPorts?.[1]?.pciAddress || '0000:03:00.1'} ({selectedReport.detailedPorts?.[1]?.driver || 'librte_pmd_ixgbe / vfio-pci'})
                       </td>
                       <td className="px-3 py-2 text-[#50fa7b] font-bold">
                         {selectedReport.detailedPorts?.[1]?.avgTxGbps?.toFixed(2) || ((selectedReport.summary?.avgTxGbps || 0) / 2).toFixed(2)} Gbps
@@ -1093,6 +1484,19 @@ export const ReportsTab: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Compare A/B Modal */}
+      {isCompareModalOpen && compareReportAId && compareReportBId && (
+        <CompareReportsModal
+          reportA={reports.find((r) => r.id === compareReportAId) || reports[0]}
+          reportB={reports.find((r) => r.id === compareReportBId) || reports[1] || reports[0]}
+          allReports={reports}
+          onSelectReportA={(id) => setCompareReportAId(id)}
+          onSelectReportB={(id) => setCompareReportBId(id)}
+          onSwap={handleSwapCompare}
+          onClose={() => setIsCompareModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -47,7 +47,7 @@ function getInitialReports(): TestReport[] {
       },
       logs: [
         '[SERVER 1] Starting Cisco TRex Stateless Engine v3.08 on 10.69.70.20...',
-        '[DPDK] Initializing DPDK EAL with 8 cores, 2 100GbE Mellanox ConnectX-5 ports.',
+        '[DPDK] Initializing DPDK EAL with 8 cores, 2 10GbE Intel X520-DA2 (82599ES) ports (librte_pmd_ixgbe).',
         '[TRAFFIC] Loading stream STL: stl/imix.yaml (multiplier: 10gbps, duration: 30s)',
         '[START] Injected traffic onto Port 0 -> Port 1 at rate 9.87 Gbps (14.82 Mpps)',
         '[SAMPLE @ 10s] Tx: 9.88 Gbps | Rx: 9.88 Gbps | Drops: 0 | CPU: 45%',
@@ -124,6 +124,21 @@ export function saveReport(report: TestReport): void {
   // prepend newer report
   const updated = [report, ...reports.filter(r => r.id !== report.id)];
   fs.writeFileSync(REPORTS_FILE, JSON.stringify(updated, null, 2), 'utf8');
+}
+
+export function updateReport(id: string, updates: Partial<TestReport>): TestReport | null {
+  ensureDataDir();
+  const reports = getAllReports();
+  const index = reports.findIndex(r => r.id === id);
+  if (index === -1) return null;
+  const updatedReport: TestReport = {
+    ...reports[index],
+    ...updates,
+    id: reports[index].id, // preserve immutable ID
+  };
+  reports[index] = updatedReport;
+  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  return updatedReport;
 }
 
 export function deleteReport(id: string): boolean {

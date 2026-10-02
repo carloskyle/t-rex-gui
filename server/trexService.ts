@@ -1353,10 +1353,10 @@ while True:
     const detailedPorts: DetailedPortReport[] = [
       {
         id: 0,
-        name: p0.name || 'Interface DPDK 0 (Full-Duplex)',
+        name: p0.name || 'Intel X520-DA2 Port 0 (Tx/Rx)',
         speed: p0.speed || '10 Gbps',
         pciAddress: p0.pciAddress || '0000:03:00.0',
-        driver: p0.driver || 'mlx5_core',
+        driver: p0.driver || 'librte_pmd_ixgbe / vfio-pci',
         mac: p0.mac || '00:1B:21:BA:C1:20',
         ip: p0.ip || '16.0.0.1',
         totalTxPkts: p0TxPkts,
@@ -1371,10 +1371,10 @@ while True:
       },
       {
         id: 1,
-        name: p1.name || 'Interface DPDK 1 (Full-Duplex)',
+        name: p1.name || 'Intel X520-DA2 Port 1 (Rx/Tx)',
         speed: p1.speed || '10 Gbps',
         pciAddress: p1.pciAddress || '0000:03:00.1',
-        driver: p1.driver || 'mlx5_core',
+        driver: p1.driver || 'librte_pmd_ixgbe / vfio-pci',
         mac: p1.mac || '00:1B:21:BA:C1:21',
         ip: p1.ip || '48.0.0.1',
         totalTxPkts: p1TxPkts,

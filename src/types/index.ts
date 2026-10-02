@@ -174,6 +174,11 @@ export interface TestReport {
   technicalAnalysis?: TechnicalAnalysis;
   detailedPorts?: DetailedPortReport[];
   timelineSamples?: TelemetrySample[];
+  dutName?: string;
+  dutModel?: string;
+  dutFirmware?: string;
+  topologyImage?: string;
+  notes?: string;
   logs: string[];
 }
 
