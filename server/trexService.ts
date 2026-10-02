@@ -387,11 +387,11 @@ class TRexManager {
     return [
       {
         id: 0,
-        name: 'Intel X520-DA2 Port 0 (Tx/Rx)',
+        name: 'DPDK Interface 0 (Tx/Rx)',
         speed: '10 Gbps',
         status: 'UP',
-        model: 'Intel 82599ES (X520-DA2)',
-        driver: 'librte_pmd_ixgbe / vfio-pci',
+        model: 'Adaptador 10GbE DPDK',
+        driver: 'vfio-pci / mlx5_core',
         pciAddress: '0000:03:00.0',
         ip: '16.0.0.1',
         mac: '00:1B:21:BA:C1:20',
@@ -408,11 +408,11 @@ class TRexManager {
       },
       {
         id: 1,
-        name: 'Intel X520-DA2 Port 1 (Rx/Tx)',
+        name: 'DPDK Interface 1 (Rx/Tx)',
         speed: '10 Gbps',
         status: 'UP',
-        model: 'Intel 82599ES (X520-DA2)',
-        driver: 'librte_pmd_ixgbe / vfio-pci',
+        model: 'Adaptador 10GbE DPDK',
+        driver: 'vfio-pci / mlx5_core',
         pciAddress: '0000:03:00.1',
         ip: '48.0.0.1',
         mac: '00:1B:21:BA:C1:21',
@@ -426,7 +426,7 @@ class TRexManager {
         ibytes: 0,
         oerrors: 0,
         ierrors: 0,
-      },
+      }
     ];
   }
 
