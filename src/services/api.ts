@@ -1,4 +1,4 @@
-import { AuthResponse, ProfileItem, TRexStatus, TestReport, User, PortStats, DiagnosticsInfo } from '../types';
+import { AuthResponse, ProfileItem, TRexStatus, TestReport, User, PortStats, DiagnosticsInfo, SavedTopology } from '../types';
 
 const TOKEN_KEY = 'cisco_trex_jwt_token';
 const USER_KEY = 'cisco_trex_user';
@@ -222,6 +222,41 @@ export class ApiClient {
     });
     if (!res.ok) {
       throw new Error('Falha ao excluir relatório');
+    }
+  }
+
+  /* Topology Library API */
+  public static async getTopologies(): Promise<SavedTopology[]> {
+    const res = await fetch('/api/topologies', {
+      headers: ApiClient.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Falha ao obter topologias salvas');
+    }
+    const data = await res.json();
+    return data.topologies;
+  }
+
+  public static async saveTopology(topology: Omit<SavedTopology, 'id' | 'createdAt'> & { id?: string }): Promise<{ success: boolean; topology: SavedTopology }> {
+    const res = await fetch('/api/topologies', {
+      method: 'POST',
+      headers: ApiClient.getHeaders(),
+      body: JSON.stringify(topology),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Falha ao salvar topologia' }));
+      throw new Error(err.error || 'Falha ao salvar topologia');
+    }
+    return res.json();
+  }
+
+  public static async deleteTopology(id: string): Promise<void> {
+    const res = await fetch(`/api/topologies/${id}`, {
+      method: 'DELETE',
+      headers: ApiClient.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Falha ao remover topologia da biblioteca');
     }
   }
 

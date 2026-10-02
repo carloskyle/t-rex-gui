@@ -181,3 +181,14 @@ export interface TRexActionRequest {
   ports?: number[];
   customParams?: string;
 }
+
+export interface SavedTopology {
+  id: string;
+  name: string;
+  dutName?: string;
+  dutModel?: string;
+  dutFirmware?: string;
+  notes?: string;
+  image: string;
+  createdAt: string;
+}

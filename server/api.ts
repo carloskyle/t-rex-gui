@@ -12,6 +12,7 @@ import {
 import { listProfiles, readProfile, saveProfile, ALLOWED_DIRS, AllowedDir, isValidProfileFilename } from './profilesService.js';
 import { trexManager } from './trexService.js';
 import { getAllReports, getReportById, updateReport, deleteReport, exportReportAsCsv, exportReportAsMarkdown } from './reportsService.js';
+import { getAllTopologies, saveTopology, deleteTopology } from './topologiesService.js';
 
 export const app = express();
 
@@ -339,7 +340,55 @@ app.get('/api/reports/:id/export', requireAuth, (req: AuthenticatedRequest, res:
 });
 
 /* -------------------------------------------------------------
- * 5. HOST CONFIGURATION
+ * 5. TOPOLOGIES LIBRARY
+ * ------------------------------------------------------------- */
+app.get('/api/topologies', requireAuth, (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const topologies = getAllTopologies();
+    res.json({ topologies });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/topologies', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, dutName, dutModel, dutFirmware, notes, image } = req.body;
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: 'O nome da topologia é obrigatório.' });
+      return;
+    }
+    const saved = saveTopology({
+      name: name.trim(),
+      dutName: dutName?.trim(),
+      dutModel: dutModel?.trim(),
+      dutFirmware: dutFirmware?.trim(),
+      notes: notes?.trim(),
+      image: image || '',
+    });
+    trexManager.addLog(`[TOPOLOGY] Topologia "${saved.name}" salva na biblioteca por ${req.user?.username}`);
+    res.json({ success: true, topology: saved });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/topologies/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const success = deleteTopology(req.params.id);
+    if (!success) {
+      res.status(404).json({ error: 'Topologia não encontrada.' });
+      return;
+    }
+    trexManager.addLog(`[TOPOLOGY] Topologia ${req.params.id} removida da biblioteca por ${req.user?.username}`);
+    res.json({ success: true, message: 'Topologia removida da biblioteca com sucesso.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* -------------------------------------------------------------
+ * 6. HOST CONFIGURATION
  * ------------------------------------------------------------- */
 app.get('/api/config', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const status = trexManager.getStatus();
