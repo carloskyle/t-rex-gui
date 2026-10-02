@@ -73,8 +73,6 @@ export interface TRexStatus {
   elapsedSeconds: number;
   remainingSeconds: number;
   mode: 'STL' | 'ASTF' | 'IDLE';
-  serverMode?: 'STL' | 'ASTF' | 'OFFLINE';
-  lastError?: string | null;
   serverIp: string;
   trexVersion: string;
   isSimulated: boolean;
@@ -181,7 +179,6 @@ export interface TestReport {
   dutFirmware?: string;
   topologyImage?: string;
   notes?: string;
-  errorMessage?: string;
   logs: string[];
 }
 

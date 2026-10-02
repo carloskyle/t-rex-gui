@@ -239,32 +239,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </div>
       )}
 
-      {/* Test Aborted Error Banner (caso o teste tenha caído durante a execução) */}
-      {!actionFeedback && status?.lastError && !isRunning && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-center justify-between rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-sm text-red-200 shadow-md shadow-red-950/40 transition"
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 mt-0.5" aria-hidden="true" />
-            <div>
-              <span className="font-bold text-xs uppercase tracking-wider text-red-400 block mb-0.5">
-                Injeção Interrompida — Erro Reportado pelo TRex
-              </span>
-              <p className="font-mono text-xs leading-relaxed text-red-200">{status.lastError}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleAction('clear')}
-            className="text-xs font-semibold px-2.5 py-1 rounded bg-red-900/40 hover:bg-red-900/70 text-red-200 border border-red-700/50 transition cursor-pointer"
-          >
-            Dispensar
-          </button>
-        </div>
-      )}
-
       {/* Real-time Telemetry Metrics Grid (WCAG AA Contrast Compliant) */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" role="group" aria-label="Métricas de Telemetria em Tempo Real">
         {/* Card 1: Tx Throughput */}
@@ -449,32 +423,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </button>
                   ))}
                 </div>
-                <div className="mt-2 text-[11px] font-mono">
-                  {selectedDir === 'stl' && (
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      Modo Stateless (STL) • Requer <strong>Server 1</strong> (ou t-rex-64 -i)
-                    </span>
-                  )}
-                  {selectedDir === 'astf' && (
-                    <span className="text-sky-400 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                      Modo Advanced Stateful (ASTF) • Requer <strong>Server 2</strong> (ou t-rex-64 -i --astf)
-                    </span>
-                  )}
-                  {selectedDir === 'cap2' && (
-                    <span className="text-purple-300 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
-                      Capturas PCAP Stateless (STL) • Requer <strong>Server 1</strong>
-                    </span>
-                  )}
-                  {selectedDir === 'avl' && (
-                    <span className="text-amber-300 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                      Perfis Avalanche Stateful (ASTF) • Requer <strong>Server 2</strong>
-                    </span>
-                  )}
-                </div>
               </fieldset>
 
               {/* Profile Selection */}
@@ -622,28 +570,26 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
-                  {/* Start Test (Server 1 - STL) */}
+                  {/* Start Test (Server 1) */}
                   <button
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test')}
-                    title="Server 1: Inicia injeção em modo Stateless (STL)"
                     className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-emerald-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    <span>Iniciar Server 1 [STL] ({getEffectiveDuration()}s)</span>
+                    <span>Iniciar Server 1 ({getEffectiveDuration()}s)</span>
                   </button>
 
-                  {/* Start Test 2 (Server 2 - ASTF) */}
+                  {/* Start Test 2 (Server 2) */}
                   <button
                     type="button"
                     disabled={isSubmitting !== null}
                     onClick={() => handleAction('start_test2')}
-                    title="Server 2: Inicia injeção em modo Advanced Stateful (ASTF)"
                     className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-sky-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    <span>Iniciar Server 2 [ASTF] ({getEffectiveDuration()}s)</span>
+                    <span>Iniciar Server 2 ({getEffectiveDuration()}s)</span>
                   </button>
                 </div>
 
