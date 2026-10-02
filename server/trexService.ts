@@ -90,6 +90,8 @@ class TRexManager {
       elapsedSeconds: 0,
       remainingSeconds: 0,
       mode: 'IDLE',
+      serverMode: !isPhysical ? 'STL' : 'OFFLINE',
+      lastError: null,
       serverIp: '10.69.70.20',
       trexVersion: 'v3.08 (DPDK 22.11)',
       isSimulated: !isPhysical,
@@ -286,6 +288,154 @@ class TRexManager {
     }
   }
 
+  // Detect whether running TRex server process is in STL or ASTF mode
+  public detectRunningServerMode(): 'STL' | 'ASTF' | 'OFFLINE' {
+    const isPhysical = fs.existsSync(REAL_TREX_DIR);
+    if (!isPhysical) {
+      if (this.status.activeServer === 'server2') return 'ASTF';
+      return 'STL';
+    }
+
+    const trexProc = this.isProcessRunning('t-rex-64');
+    if (!trexProc.running) {
+      return 'OFFLINE';
+    }
+
+    // Inspect command line of t-rex-64 processes
+    for (const pid of trexProc.pids) {
+      try {
+        const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+        if (cmdline.includes('--astf') || cmdline.includes('-astf')) {
+          return 'ASTF';
+        }
+      } catch {}
+    }
+
+    try {
+      const psOut = execSync('ps -eo args | grep -v grep | grep t-rex-64 || true', { encoding: 'utf8' });
+      if (psOut.includes('--astf') || psOut.includes('-astf')) {
+        return 'ASTF';
+      }
+    } catch {}
+
+    return 'STL';
+  }
+
+  // Detect if a console output line contains a fatal error that means traffic failed to start
+  public isConsoleErrorLine(line: string): boolean {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+
+    // Ignore benign status lines that report 0 errors
+    if (
+      lower.includes('0 errors') ||
+      lower.includes('0 error') ||
+      lower.includes('errors: 0') ||
+      lower.includes('errors: 0,') ||
+      lower.includes('ierrors: 0') ||
+      lower.includes('oerrors: 0') ||
+      lower.includes('error rate: 0') ||
+      lower.includes('no errors') ||
+      lower.includes('0 failed') ||
+      lower.includes('failed: 0')
+    ) {
+      return false;
+    }
+
+    const explicitFatalPatterns = [
+      '*** [failed] ***',
+      '*** [failed]',
+      '[failed] ***',
+      '*** [rpc]',
+      'command start failed',
+      'command \'start\' failed',
+      'failed to load',
+      'cannot load',
+      'unable to load',
+      'profile load error',
+      'server mode is',
+      'mode mismatch',
+      'not supported in',
+      'is not supported',
+      'cannot inject',
+      'traceback (most recent call last)',
+      'syntaxerror',
+      'importerror',
+      'attributeerror',
+      'valueerror',
+      'typeerror',
+      'connection refused',
+      'cannot connect',
+      'socket error',
+      'server is not responding',
+      'failed to get server response',
+      'failed to connect',
+      'invalid argument',
+      'unrecognized argument',
+      'unknown argument',
+      'invalid multiplier',
+      'unknown parameter',
+      'port is not acquired',
+      'failed to acquire',
+      'operation failed',
+      'trexerror',
+      'fatal error',
+      'bad profile'
+    ];
+
+    for (const pat of explicitFatalPatterns) {
+      if (lower.includes(pat)) return true;
+    }
+
+    if (
+      /^error\s*:/i.test(trimmed) ||
+      /^\[error\]/i.test(trimmed) ||
+      /^exception\s*:/i.test(trimmed) ||
+      /:\s*error\s*:/i.test(trimmed)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public containsFatalError(output: string): boolean {
+    const lines = output.split('\n');
+    return lines.some(line => this.isConsoleErrorLine(line));
+  }
+
+  public extractErrorMessage(output: string): string {
+    const lines = output.split('\n');
+    for (const line of lines) {
+      if (this.isConsoleErrorLine(line)) {
+        return line.trim();
+      }
+    }
+    return '';
+  }
+
+  // Instantly halts an active test if console or engine emits a fatal error
+  public abortCurrentTestWithError(reason: string): void {
+    if (this.realMonitorChild) {
+      try { this.realMonitorChild.kill(); } catch {}
+      this.realMonitorChild = null;
+    }
+
+    if (this.activeInterval) {
+      clearInterval(this.activeInterval);
+      this.activeInterval = null;
+    }
+
+    this.status.isRunning = false;
+    this.status.remainingSeconds = 0;
+    this.status.lastError = reason;
+    this.status.metrics = this.getZeroMetrics();
+
+    this.addLog(`[ABORT] Teste interrompido imediatamente devido a erro no TRex: ${reason}`);
+    this.finishCurrentTest('FAILED', reason);
+  }
+
   public checkPortListening(port: number, host: string = '127.0.0.1', timeoutMs: number = 600): Promise<boolean> {
     return new Promise((resolve) => {
       const socket = new net.Socket();
@@ -453,7 +603,11 @@ class TRexManager {
   }
 
   public getStatus(): TRexStatus {
-    return { ...this.status };
+    const currentMode = this.detectRunningServerMode();
+    return {
+      ...this.status,
+      serverMode: currentMode,
+    };
   }
 
   public getLogs(limit: number = 100): string[] {
@@ -510,6 +664,7 @@ class TRexManager {
 
     // 1. Action: STOP
     if (action === 'stop') {
+      this.status.lastError = null;
       return this.stopCurrentTest('Manualmente interrompido pelo operador');
     }
 
@@ -525,6 +680,7 @@ class TRexManager {
       }
       this.status.isRunning = false;
       this.status.activeServer = 'none';
+      this.status.lastError = null;
       return { success: true, message: 'Servidor TRex interrompido com sucesso.' };
     }
 
@@ -532,6 +688,7 @@ class TRexManager {
     if (action === 'clear') {
       this.status.metrics = this.getZeroMetrics();
       this.status.ports = this.getDefaultPorts();
+      this.status.lastError = null;
       this.clearLogs();
       return { success: true, message: 'Estatísticas e console reinicializados com sucesso.' };
     }
@@ -581,6 +738,40 @@ class TRexManager {
         throw new Error(`Arquivo de perfil não encontrado no caminho: ${dir}/${profile}`);
       }
 
+      // Pre-flight: Check server mode and action compatibility
+      const currentServerMode = this.detectRunningServerMode();
+      this.status.serverMode = currentServerMode;
+
+      // 1. Incompatibilidade direta da ação com o tipo de perfil
+      if (action === 'start_test' && dir === 'astf') {
+        const errorMsg = `Incompatibilidade de Ação: O Server 1 (start_test) é configurado para modo Stateless (STL). Para executar o perfil ASTF '${dir}/${profile}', utilize o botão 'Iniciar Server 2' (ASTF) ou inicie o servidor com '--astf'.`;
+        this.addLog(`[ERRO_CONFIG] ${errorMsg}`);
+        this.status.lastError = errorMsg;
+        throw new Error(errorMsg);
+      }
+
+      if (action === 'start_test2' && dir === 'stl') {
+        const errorMsg = `Incompatibilidade de Ação: O Server 2 (start_test2) é configurado para modo Advanced Stateful (ASTF). Para executar o perfil Stateless '${dir}/${profile}', utilize o botão 'Iniciar Server 1' (STL).`;
+        this.addLog(`[ERRO_CONFIG] ${errorMsg}`);
+        this.status.lastError = errorMsg;
+        throw new Error(errorMsg);
+      }
+
+      // 2. Incompatibilidade com o daemon TRex já em execução
+      if (currentServerMode === 'STL' && dir === 'astf') {
+        const errorMsg = `Incompatibilidade de Modo TRex: O daemon TRex está ativo no modo Stateless (STL), mas você tentou executar o perfil ASTF '${dir}/${profile}'. O TRex em modo STL rejeita perfis ASTF. Para executar este perfil, pare o servidor atual (botão 'Stop Server') e inicie o Server 2 (modo ASTF), ou selecione um perfil Stateless da pasta 'stl'.`;
+        this.addLog(`[ERRO_CONFIG] ${errorMsg}`);
+        this.status.lastError = errorMsg;
+        throw new Error(errorMsg);
+      }
+
+      if (currentServerMode === 'ASTF' && dir === 'stl') {
+        const errorMsg = `Incompatibilidade de Modo TRex: O daemon TRex está ativo no modo Advanced Stateful (ASTF), mas você tentou executar o perfil Stateless '${dir}/${profile}'. O TRex em modo ASTF rejeita perfis STL. Pare o servidor atual e inicie o Server 1 (modo STL), ou selecione um perfil Stateful da pasta 'astf'.`;
+        this.addLog(`[ERRO_CONFIG] ${errorMsg}`);
+        this.status.lastError = errorMsg;
+        throw new Error(errorMsg);
+      }
+
       // Stop any already running test
       if (this.status.isRunning) {
         this.stopCurrentTest('Substituído por novo teste');
@@ -606,6 +797,7 @@ class TRexManager {
       this.status.mode = dir === 'astf' ? 'ASTF' : 'STL';
       this.status.elapsedSeconds = 0;
       this.status.remainingSeconds = targetDurationSec;
+      this.status.lastError = null;
 
       // Reset statistics sampling
       this.currentSampleStats = {
@@ -669,7 +861,7 @@ class TRexManager {
 
       if (fs.existsSync(REAL_CONSOLE_BIN)) {
         // Execute real console command via temporary script as in legacy, but safely without shell injection
-        this.startRealConsoleProcess(relativeProfilePath, multiplier, targetDurationSec);
+        this.startRealConsoleProcess(dir, relativeProfilePath, multiplier, targetDurationSec);
       } else {
         // High fidelity DPDK simulation
         this.startSimulationInterval(multiplier, targetDurationSec);
@@ -709,60 +901,74 @@ class TRexManager {
     });
   }
 
-  private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
+  private startRealConsoleProcess(dir: string, relPath: string, multiplier: string, duration: number): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
     // Ensure -d is placed right after -f so TRex parser sets the duration limit explicitly
     const durationArg = duration > 0 ? ` -d ${duration}` : '';
+    const consoleModeArg = dir === 'astf' ? ' --astf' : '';
     // Use -s 127.0.0.1 to avoid IPv6 localhost resolution mismatch
     const scriptContent = `#!/bin/bash
 cd ${REAL_TREX_DIR}
-./trex-console -s 127.0.0.1 << 'EOF'
+./trex-console -s 127.0.0.1${consoleModeArg} << 'EOF'
 start -f ${relPath}${durationArg} -m ${multiplier}
 EOF
 `;
     fs.writeFileSync(tmpScript, scriptContent, { mode: 0o755 });
-    this.addLog(`[TREX_CMD] Executando comando de injeção: start -f ${relPath}${durationArg} -m ${multiplier}`);
+    this.addLog(`[TREX_CMD] Executando comando de injeção: start -f ${relPath}${durationArg} -m ${multiplier}${consoleModeArg ? ' (modo ASTF)' : ''}`);
 
     let fullConsoleOutput = '';
+    let testAborted = false;
+
+    const abortTest = (reason: string) => {
+      if (testAborted) return;
+      testAborted = true;
+      try {
+        child.kill('SIGTERM');
+      } catch {}
+      this.abortCurrentTestWithError(reason);
+    };
+
     const child = spawn('/bin/bash', [tmpScript]);
     child.stdout.on('data', data => {
       const text = data.toString();
       fullConsoleOutput += text;
       const lines = text.split('\n').filter(Boolean);
-      lines.forEach((l: string) => this.addLog(`[TRex Core] ${l}`));
+      lines.forEach((l: string) => {
+        this.addLog(`[TRex Core] ${l}`);
+        if (this.isConsoleErrorLine(l)) {
+          abortTest(l.trim());
+        }
+      });
     });
+
     child.stderr.on('data', data => {
       const text = data.toString();
       fullConsoleOutput += text;
       const lines = text.split('\n').filter(Boolean);
-      lines.forEach((l: string) => this.addLog(`[TRex Err] ${l}`));
+      lines.forEach((l: string) => {
+        this.addLog(`[TRex Err] ${l}`);
+        if (this.isConsoleErrorLine(l)) {
+          abortTest(l.trim());
+        }
+      });
     });
 
     child.on('close', code => {
       try { fs.unlinkSync(tmpScript); } catch {}
       this.addLog(`[TRex] Processo de console finalizado (Exit Code: ${code}).`);
 
-      const lower = fullConsoleOutput.toLowerCase();
-      const hasFatalError =
-        lower.includes('connection refused') ||
-        lower.includes('cannot connect') ||
-        lower.includes('socket error') ||
-        lower.includes('server is not responding') ||
-        lower.includes('failed to get server response') ||
-        lower.includes('failed to connect') ||
-        fullConsoleOutput.includes('*** [RPC]') ||
-        fullConsoleOutput.includes('*** [FAILED] ***');
+      if (testAborted) return;
 
-      if (hasFatalError) {
-        this.addLog(`[ALERT] Falha de comunicação com o daemon TRex (porta 4501): ${fullConsoleOutput.slice(-300)}`);
-        this.finishCurrentTest('FAILED');
+      const hasError = code !== 0 || this.containsFatalError(fullConsoleOutput);
+      if (hasError) {
+        const errorExcerpt = this.extractErrorMessage(fullConsoleOutput) || `Processo trex-console finalizou com código de erro ${code}`;
+        abortTest(errorExcerpt);
       } else {
         this.addLog(`[TRex] Injeção de tráfego enviada com sucesso por ${duration}s.`);
+        // Start 100% REAL telemetry monitoring only after confirmed successful start
+        this.startRealHardwareMonitor(duration);
       }
     });
-
-    // Start 100% REAL telemetry monitoring from TRex Python STLClient
-    this.startRealHardwareMonitor(duration);
   }
 
   // Real Hardware Telemetry Monitor: streams real-time physical counters from TRex
@@ -910,6 +1116,10 @@ while True:
           const data = JSON.parse(line.trim());
           if (data.error) {
             this.addLog(`[TRex Telemetry] ${data.error}`);
+            if (this.isConsoleErrorLine(data.error)) {
+              this.abortCurrentTestWithError(data.error);
+              return;
+            }
             continue;
           }
           this.updateMetricsFromHardware(data, duration);
@@ -1087,12 +1297,21 @@ while True:
   private startSimulationInterval(multiplier: string, duration: number): void {
     if (this.activeInterval) {
       clearInterval(this.activeInterval);
+      this.activeInterval = null;
     }
+
+    if (!this.status.isRunning || this.status.lastError) return;
 
     const { targetGbps, targetPps } = this.parseMultiplierToGbps(multiplier);
 
     this.activeInterval = setInterval(() => {
-      if (!this.status.isRunning) return;
+      if (!this.status.isRunning || this.status.lastError) {
+        if (this.activeInterval) {
+          clearInterval(this.activeInterval);
+          this.activeInterval = null;
+        }
+        return;
+      }
 
       const elapsed = Math.floor((Date.now() - this.activeTestStartedAt) / 1000);
       const remaining = Math.max(0, duration - elapsed);
@@ -1231,7 +1450,7 @@ while True:
   }
 
   // Finish test, drain queues, compile report and persist to reports.json
-  private finishCurrentTest(finalStatus: 'COMPLETED' | 'STOPPED' | 'FAILED'): void {
+  private finishCurrentTest(finalStatus: 'COMPLETED' | 'STOPPED' | 'FAILED', errorMessage?: string): void {
     if (this.realMonitorChild) {
       try { this.realMonitorChild.kill(); } catch {}
       this.realMonitorChild = null;
@@ -1250,6 +1469,9 @@ while True:
 
     this.status.isRunning = false;
     this.status.remainingSeconds = 0;
+    if (errorMessage) {
+      this.status.lastError = errorMessage;
+    }
 
     const samplesTx = this.currentSampleStats.txBpsSamples;
     const samplesRx = this.currentSampleStats.rxBpsSamples;
@@ -1405,6 +1627,7 @@ while True:
       duration: `${testDuration}`,
       ports: [0, 1],
       status: finalStatus,
+      errorMessage: errorMessage || this.status.lastError || undefined,
       summary: {
         totalPacketsTx: totalTxPkts,
         totalPacketsRx: totalRxPkts,

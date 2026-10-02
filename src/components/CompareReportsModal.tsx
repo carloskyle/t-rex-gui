@@ -45,6 +45,21 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
   const deltaTxGbps = txB - txA;
   const deltaTxPercent = txA > 0 ? (deltaTxGbps / txA) * 100 : 0;
 
+  // Precision formatting: if there is a subtle variation (< 0.01 Gbps), display 3 decimal places
+  // so the difference isn't rounded to 0.00 while percent is non-zero
+  const isSubCentesimoTx = Math.abs(deltaTxGbps) > 0.0005 && Math.abs(deltaTxGbps) < 0.01;
+  const isZeroTxDiff = Math.abs(deltaTxGbps) <= 0.0005;
+  const txDecimals = isSubCentesimoTx ? 3 : 2;
+
+  const displayTxA = txA.toFixed(txDecimals);
+  const displayTxB = txB.toFixed(txDecimals);
+  const displayDeltaTx = isZeroTxDiff
+    ? '0.00'
+    : `${deltaTxGbps > 0 ? '+' : ''}${deltaTxGbps.toFixed(txDecimals)}`;
+  const displayDeltaTxPercent = isZeroTxDiff
+    ? '0.00'
+    : `${deltaTxPercent > 0 ? '+' : ''}${deltaTxPercent.toFixed(2)}`;
+
   // Packet Rate
   const mppsA = reportA.summary.avgTxMpps;
   const mppsB = reportB.summary.avgTxMpps;
@@ -275,13 +290,13 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
     <tbody>
       <tr>
         <td><strong>Throughput L2 Ethernet</strong></td>
-        <td class="text-right mono font-bold">${txA.toFixed(2)} Gbps</td>
-        <td class="text-right mono font-bold">${txB.toFixed(2)} Gbps</td>
+        <td class="text-right mono font-bold">${displayTxA} Gbps</td>
+        <td class="text-right mono font-bold">${displayTxB} Gbps</td>
         <td class="text-right mono ${deltaTxGbps > 0 ? 'positive' : deltaTxGbps < 0 ? 'negative' : 'neutral'}">
-          ${deltaTxGbps > 0 ? '+' : ''}${deltaTxGbps.toFixed(2)} Gbps
+          ${displayDeltaTx} Gbps
         </td>
         <td class="text-right mono ${deltaTxPercent > 0 ? 'positive' : deltaTxPercent < 0 ? 'negative' : 'neutral'}">
-          ${deltaTxPercent > 0 ? '+' : ''}${deltaTxPercent.toFixed(2)}%
+          ${displayDeltaTxPercent}%
         </td>
       </tr>
       <tr>
@@ -432,24 +447,24 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="w-full max-w-5xl rounded-2xl border border-[#44475a] bg-[#282a36] p-6 shadow-2xl space-y-5 my-8 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="w-full max-w-5xl rounded-2xl border border-slate-800/90 bg-slate-900 p-6 shadow-2xl space-y-5 my-8 max-h-[92vh] overflow-y-auto text-slate-100">
         {/* Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#44475a] pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
               <GitCompare className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#bd93f9]">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">
                   Comparação de Testes de Tráfego (Diff A/B)
                 </span>
-                <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-mono text-sky-300">
+                <span className="rounded bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 text-[10px] font-mono text-sky-400 font-medium">
                   RFC 2544 Benchmark
                 </span>
               </div>
-              <h3 className="text-base font-bold font-mono text-[#f8f8f2]">
+              <h3 className="text-base font-bold font-mono text-slate-100 mt-0.5">
                 Teste A ({reportA.id.slice(0, 14)}) vs. Teste B ({reportB.id.slice(0, 14)})
               </h3>
             </div>
@@ -460,7 +475,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
               type="button"
               onClick={onSwap}
               title="Inverter ordem (Trocar Referência e Candidato)"
-              className="flex items-center gap-1.5 rounded-lg border border-[#44475a] bg-[#1e1f29] px-3 py-1.5 text-xs font-mono text-purple-300 hover:bg-[#44475a] transition cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-1.5 text-xs font-mono text-purple-300 hover:bg-slate-800 hover:text-white transition cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               <span>Inverter (B ⇄ A)</span>
@@ -469,9 +484,9 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
             <button
               type="button"
               onClick={handleExportComparePdf}
-              className="flex items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-1.5 text-xs font-mono text-amber-300 hover:bg-amber-500/25 transition cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-1.5 text-xs font-mono text-amber-300 hover:bg-amber-500/25 transition cursor-pointer font-semibold"
             >
-              <Printer className="h-3.5 w-3.5" />
+              <Printer className="h-3.5 w-3.5 text-amber-400" />
               <span>Laudo PDF (A4)</span>
             </button>
 
@@ -479,6 +494,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
               type="button"
               onClick={onClose}
               className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              title="Fechar comparação"
             >
               <X className="h-5 w-5" />
             </button>
@@ -486,20 +502,20 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
         </div>
 
         {/* Test Selector Dropdowns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#1e1f29] p-4 rounded-xl border border-[#44475a]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80">
           {/* Test A Selector */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="font-bold text-[#8be9fd] flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#8be9fd]" />
+              <span className="font-bold text-sky-400 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-sky-400" />
                 TESTE A (Referência / Baseline):
               </span>
-              <span className="text-[11px] text-[#6272a4]">{reportA.operator}</span>
+              <span className="text-[11px] text-slate-400">{reportA.operator}</span>
             </div>
             <select
               value={reportA.id}
               onChange={(e) => onSelectReportA(e.target.value)}
-              className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-2 text-xs font-mono text-[#f8f8f2] focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
             >
               {allReports.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -512,16 +528,16 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
           {/* Test B Selector */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="font-bold text-[#50fa7b] flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#50fa7b]" />
+              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 TESTE B (Candidato / Novo Teste):
               </span>
-              <span className="text-[11px] text-[#6272a4]">{reportB.operator}</span>
+              <span className="text-[11px] text-slate-400">{reportB.operator}</span>
             </div>
             <select
               value={reportB.id}
               onChange={(e) => onSelectReportB(e.target.value)}
-              className="w-full rounded-lg border border-[#44475a] bg-[#282a36] px-3 py-2 text-xs font-mono text-[#f8f8f2] focus:border-emerald-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
             >
               {allReports.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -562,8 +578,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                   deltaTxGbps > 0 ? 'text-emerald-400' : deltaTxGbps < 0 ? 'text-red-400' : 'text-slate-300'
                 }`}
               >
-                {deltaTxGbps > 0 ? '+' : ''}
-                {deltaTxGbps.toFixed(2)} Gbps
+                {displayDeltaTx} Gbps
               </span>
             </div>
 
@@ -585,26 +600,26 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
         <div className="space-y-4">
           {/* 1. Identification & DUT Side-by-Side */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
-              <Network className="h-3.5 w-3.5 text-[#8be9fd]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-1.5 font-mono">
+              <Network className="h-3.5 w-3.5 text-sky-400" />
               Identificação & Equipamentos sob Teste (DUT)
             </h4>
 
-            <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+            <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-950/80 shadow-md">
               <table className="w-full text-left font-mono text-xs">
-                <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                <thead className="border-b border-slate-800/90 bg-slate-950 text-[11px] uppercase text-slate-400">
                   <tr>
                     <th className="px-3.5 py-2">Parâmetro</th>
-                    <th className="px-3.5 py-2 text-[#8be9fd]">Teste A (Baseline)</th>
-                    <th className="px-3.5 py-2 text-[#50fa7b]">Teste B (Candidato)</th>
+                    <th className="px-3.5 py-2 text-sky-400">Teste A (Baseline)</th>
+                    <th className="px-3.5 py-2 text-emerald-400">Teste B (Candidato)</th>
                     <th className="px-3.5 py-2 text-right">Comparação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
-                  <tr>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 text-slate-400 font-semibold">Equipamento (DUT)</td>
-                    <td className="px-3.5 py-2 font-bold text-[#8be9fd]">{reportA.dutName || 'DUT Teste A'}</td>
-                    <td className="px-3.5 py-2 font-bold text-[#50fa7b]">{reportB.dutName || 'DUT Teste B'}</td>
+                    <td className="px-3.5 py-2 font-bold text-sky-400">{reportA.dutName || 'DUT Teste A'}</td>
+                    <td className="px-3.5 py-2 font-bold text-emerald-400">{reportB.dutName || 'DUT Teste B'}</td>
                     <td className="px-3.5 py-2 text-right text-xs">
                       {reportA.dutName === reportB.dutName ? (
                         <span className="text-emerald-400 font-bold">Mesmo Equipamento</span>
@@ -613,7 +628,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                       )}
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 text-slate-400 font-semibold">Modelo / Part Number</td>
                     <td className="px-3.5 py-2">{reportA.dutModel || '-'}</td>
                     <td className="px-3.5 py-2">{reportB.dutModel || '-'}</td>
@@ -621,7 +636,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                       {reportA.dutModel === reportB.dutModel ? 'Idêntico' : 'Diferente'}
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 text-slate-400 font-semibold">Firmware / Versão OS</td>
                     <td className="px-3.5 py-2">{reportA.dutFirmware || 'Versão Homologada'}</td>
                     <td className="px-3.5 py-2">{reportB.dutFirmware || 'Versão Homologada'}</td>
@@ -633,15 +648,15 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                       )}
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 text-slate-400 font-semibold">Perfil de Tráfego</td>
-                    <td className="px-3.5 py-2 text-[#f1fa8c]">{reportA.profile} ({reportA.dir})</td>
-                    <td className="px-3.5 py-2 text-[#f1fa8c]">{reportB.profile} ({reportB.dir})</td>
+                    <td className="px-3.5 py-2 text-amber-300">{reportA.profile} ({reportA.dir})</td>
+                    <td className="px-3.5 py-2 text-amber-300">{reportB.profile} ({reportB.dir})</td>
                     <td className="px-3.5 py-2 text-right text-slate-400">
                       {reportA.profile === reportB.profile ? 'Mesmo Perfil' : 'Perfis Distintos'}
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 text-slate-400 font-semibold">Taxa / Duração</td>
                     <td className="px-3.5 py-2">{reportA.multiplier} • {reportA.duration}s</td>
                     <td className="px-3.5 py-2">{reportB.multiplier} • {reportB.duration}s</td>
@@ -656,46 +671,44 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
 
           {/* 2. Throughput & Forwarding Deltas */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-[#50fa7b]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-1.5 font-mono">
+              <Activity className="h-3.5 w-3.5 text-emerald-400" />
               Throughput & Capacidade de Comutação
             </h4>
 
-            <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+            <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-950/80 shadow-md">
               <table className="w-full text-left font-mono text-xs">
-                <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                <thead className="border-b border-slate-800/90 bg-slate-950 text-[11px] uppercase text-slate-400">
                   <tr>
                     <th className="px-3.5 py-2">Métrica</th>
-                    <th className="px-3.5 py-2 text-right text-[#8be9fd]">Teste A</th>
-                    <th className="px-3.5 py-2 text-right text-[#50fa7b]">Teste B</th>
+                    <th className="px-3.5 py-2 text-right text-sky-400">Teste A</th>
+                    <th className="px-3.5 py-2 text-right text-emerald-400">Teste B</th>
                     <th className="px-3.5 py-2 text-right text-purple-300">Diferença (&Delta;)</th>
                     <th className="px-3.5 py-2 text-right">Variação (%)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
-                  <tr>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Throughput L2 Ethernet</td>
-                    <td className="px-3.5 py-2 text-right font-bold text-[#8be9fd]">{txA.toFixed(2)} Gbps</td>
-                    <td className="px-3.5 py-2 text-right font-bold text-[#50fa7b]">{txB.toFixed(2)} Gbps</td>
+                    <td className="px-3.5 py-2 text-right font-bold text-sky-400">{displayTxA} Gbps</td>
+                    <td className="px-3.5 py-2 text-right font-bold text-emerald-400">{displayTxB} Gbps</td>
                     <td
                       className={`px-3.5 py-2 text-right font-bold ${
                         deltaTxGbps > 0 ? 'text-emerald-400' : deltaTxGbps < 0 ? 'text-red-400' : 'text-slate-400'
                       }`}
                     >
-                      {deltaTxGbps > 0 ? '+' : ''}
-                      {deltaTxGbps.toFixed(2)} Gbps
+                      {displayDeltaTx} Gbps
                     </td>
                     <td
                       className={`px-3.5 py-2 text-right font-bold ${
                         deltaTxPercent > 0 ? 'text-emerald-400' : deltaTxPercent < 0 ? 'text-red-400' : 'text-slate-400'
                       }`}
                     >
-                      {deltaTxPercent > 0 ? '+' : ''}
-                      {deltaTxPercent.toFixed(2)}%
+                      {displayDeltaTxPercent}%
                     </td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Taxa de Pacotes (Packet Rate)</td>
                     <td className="px-3.5 py-2 text-right font-bold">{mppsA.toFixed(3)} Mpps</td>
                     <td className="px-3.5 py-2 text-right font-bold">{mppsB.toFixed(3)} Mpps</td>
@@ -717,7 +730,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     </td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">L1 Wire-Rate Físico</td>
                     <td className="px-3.5 py-2 text-right">{(techA?.l1LineRateTxGbps ?? txA * 1.05).toFixed(2)} Gbps</td>
                     <td className="px-3.5 py-2 text-right">{(techB?.l1LineRateTxGbps ?? txB * 1.05).toFixed(2)} Gbps</td>
@@ -730,7 +743,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     </td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Pico de Throughput Registrado</td>
                     <td className="px-3.5 py-2 text-right font-mono">{reportA.summary.peakTxGbps.toFixed(2)} Gbps</td>
                     <td className="px-3.5 py-2 text-right font-mono">{reportB.summary.peakTxGbps.toFixed(2)} Gbps</td>
@@ -746,24 +759,24 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
 
           {/* 3. Packet Loss & Frame Integrity RFC 2544 */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
-              <HardDrive className="h-3.5 w-3.5 text-[#ffb86c]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-1.5 font-mono">
+              <HardDrive className="h-3.5 w-3.5 text-amber-400" />
               Integridade de Quadros & Descartes no DUT (RFC 2544)
             </h4>
 
-            <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+            <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-950/80 shadow-md">
               <table className="w-full text-left font-mono text-xs">
-                <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                <thead className="border-b border-slate-800/90 bg-slate-950 text-[11px] uppercase text-slate-400">
                   <tr>
                     <th className="px-3.5 py-2">Métrica</th>
-                    <th className="px-3.5 py-2 text-right text-[#8be9fd]">Teste A</th>
-                    <th className="px-3.5 py-2 text-right text-[#50fa7b]">Teste B</th>
+                    <th className="px-3.5 py-2 text-right text-sky-400">Teste A</th>
+                    <th className="px-3.5 py-2 text-right text-emerald-400">Teste B</th>
                     <th className="px-3.5 py-2 text-right text-purple-300">Diferença (&Delta;)</th>
                     <th className="px-3.5 py-2 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
-                  <tr>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Total Pacotes Transmitidos (Tx)</td>
                     <td className="px-3.5 py-2 text-right">{reportA.summary.totalPacketsTx.toLocaleString()}</td>
                     <td className="px-3.5 py-2 text-right">{reportB.summary.totalPacketsTx.toLocaleString()}</td>
@@ -773,7 +786,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     <td className="px-3.5 py-2 text-center text-slate-400">Total</td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Descartes Registrados no DUT</td>
                     <td className={`px-3.5 py-2 text-right font-bold ${dropsA === 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {dropsA.toLocaleString()} pkts
@@ -791,18 +804,18 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     </td>
                     <td className="px-3.5 py-2 text-center">
                       {isZeroLossB ? (
-                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        <span className="rounded bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
                           Zero-Loss (100%)
                         </span>
                       ) : (
-                        <span className="rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                        <span className="rounded bg-red-950/60 border border-red-800/60 px-2 py-0.5 text-[10px] font-bold text-red-400">
                           Descartes Ativos
                         </span>
                       )}
                     </td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Taxa de Perda (%)</td>
                     <td className="px-3.5 py-2 text-right">{dropRateA.toFixed(5)}%</td>
                     <td className="px-3.5 py-2 text-right">{dropRateB.toFixed(5)}%</td>
@@ -825,29 +838,29 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
 
           {/* 4. QoS & Latency */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6272a4] mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-[#ff79c6]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-1.5 font-mono">
+              <CheckCircle2 className="h-3.5 w-3.5 text-purple-400" />
               Latência de Trânsito & Jitter (RFC 3393 PDV)
             </h4>
 
-            <div className="overflow-x-auto rounded-xl border border-[#44475a] bg-[#1e1f29]">
+            <div className="overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-950/80 shadow-md">
               <table className="w-full text-left font-mono text-xs">
-                <thead className="border-b border-[#44475a] bg-[#282a36] text-[11px] uppercase text-[#6272a4]">
+                <thead className="border-b border-slate-800/90 bg-slate-950 text-[11px] uppercase text-slate-400">
                   <tr>
                     <th className="px-3.5 py-2">Métrica</th>
-                    <th className="px-3.5 py-2 text-right text-[#8be9fd]">Teste A</th>
-                    <th className="px-3.5 py-2 text-right text-[#50fa7b]">Teste B</th>
+                    <th className="px-3.5 py-2 text-right text-sky-400">Teste A</th>
+                    <th className="px-3.5 py-2 text-right text-emerald-400">Teste B</th>
                     <th className="px-3.5 py-2 text-right text-purple-300">Diferença (&Delta;)</th>
                     <th className="px-3.5 py-2 text-center">Impacto</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#44475a]/50 text-[#f8f8f2]">
-                  <tr>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Latência Média (RTT)</td>
-                    <td className="px-3.5 py-2 text-right font-bold text-[#8be9fd]">
+                    <td className="px-3.5 py-2 text-right font-bold text-sky-400">
                       {latA} µs ({reportA.summary.avgLatencyMs.toFixed(3)} ms)
                     </td>
-                    <td className="px-3.5 py-2 text-right font-bold text-[#50fa7b]">
+                    <td className="px-3.5 py-2 text-right font-bold text-emerald-400">
                       {latB} µs ({reportB.summary.avgLatencyMs.toFixed(3)} ms)
                     </td>
                     <td
@@ -870,7 +883,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     </td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Jitter de Trânsito</td>
                     <td className="px-3.5 py-2 text-right">{jitA} µs</td>
                     <td className="px-3.5 py-2 text-right">{jitB} µs</td>
@@ -885,7 +898,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
                     <td className="px-3.5 py-2 text-center text-slate-400">Variação de Atraso</td>
                   </tr>
 
-                  <tr>
+                  <tr className="hover:bg-slate-800/30">
                     <td className="px-3.5 py-2 font-semibold text-slate-300">Uso CPU TRex DPDK</td>
                     <td className="px-3.5 py-2 text-right font-mono">{reportA.summary.cpuUtilizationPercent.toFixed(1)}%</td>
                     <td className="px-3.5 py-2 text-right font-mono">{reportB.summary.cpuUtilizationPercent.toFixed(1)}%</td>
@@ -901,8 +914,8 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-[#44475a] pt-4 font-mono text-xs">
-          <div className="text-[11px] text-[#6272a4]">
+        <div className="flex items-center justify-between border-t border-slate-800/80 pt-4 font-mono text-xs">
+          <div className="text-[11px] text-slate-400">
             Placa de Rede em ambos os testes: Intel X520-DA2 (Dual 10GbE SFP+ • librte_pmd_ixgbe)
           </div>
           <div className="flex items-center gap-2">
@@ -917,7 +930,7 @@ export const CompareReportsModal: React.FC<CompareReportsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-[#44475a] px-3.5 py-1.5 text-[#f8f8f2] hover:bg-[#44475a] transition cursor-pointer"
+              className="rounded-lg border border-slate-700/80 bg-slate-950 px-3.5 py-1.5 text-slate-200 hover:bg-slate-800 hover:text-white transition cursor-pointer"
             >
               Fechar
             </button>
