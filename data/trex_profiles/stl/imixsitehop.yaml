@@ -1,0 +1,18 @@
+# Cisco TRex Stateless IMIX Site-to-Site Multi-Hop Benchmark
+# Real-world Internet Traffic Mix: 64B (58%), 594B (33%), 1518B (9%)
+- duration : 0.1
+  generator :
+    distribution : "seq"
+    clients_start : "16.0.0.1"
+    clients_end   : "16.0.0.254"
+    servers_start : "48.0.0.1"
+    servers_end   : "48.0.0.254"
+    clients_per_gb : 201
+    min_rate_bps : 1000000000
+  cap_info :
+    - name: cap2/small_packet.pcap
+      cps : 58.0
+    - name: cap2/medium_packet.pcap
+      cps : 33.0
+    - name: cap2/large_packet.pcap
+      cps : 9.0

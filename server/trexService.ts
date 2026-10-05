@@ -50,6 +50,7 @@ class TRexManager {
   private activeTestTargetDuration: number = 0;
   private activeOperator: User | null = null;
   private activeAction: string = '';
+  private activeTestId: string = '';
   private currentSampleStats: {
     txBpsSamples: number[];
     rxBpsSamples: number[];
@@ -581,7 +582,15 @@ class TRexManager {
         throw new Error(`Arquivo de perfil não encontrado no caminho: ${dir}/${profile}`);
       }
 
-      // Stop any already running test
+      // Ensure any running test is stopped and all previous intervals/subprocesses are completely terminated
+      if (this.activeInterval) {
+        clearInterval(this.activeInterval);
+        this.activeInterval = null;
+      }
+      if (this.realMonitorChild) {
+        try { this.realMonitorChild.kill(); } catch {}
+        this.realMonitorChild = null;
+      }
       if (this.status.isRunning) {
         this.stopCurrentTest('Substituído por novo teste');
       }
@@ -592,6 +601,8 @@ class TRexManager {
       const parsedSec = parseInt(rawDuration, 10);
       const targetDurationSec = Math.max(1, Math.min(3600, !isNaN(parsedSec) && parsedSec > 0 ? parsedSec : 30));
 
+      const currentTestId = `trx_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      this.activeTestId = currentTestId;
       this.activeAction = action;
       this.activeOperator = operator;
       this.activeTestStartedAt = Date.now();
@@ -669,10 +680,10 @@ class TRexManager {
 
       if (fs.existsSync(REAL_CONSOLE_BIN)) {
         // Execute real console command via temporary script as in legacy, but safely without shell injection
-        this.startRealConsoleProcess(relativeProfilePath, multiplier, targetDurationSec);
+        this.startRealConsoleProcess(relativeProfilePath, multiplier, targetDurationSec, currentTestId);
       } else {
         // High fidelity DPDK simulation
-        this.startSimulationInterval(multiplier, targetDurationSec);
+        this.startSimulationInterval(multiplier, targetDurationSec, currentTestId);
       }
 
       return {
@@ -709,7 +720,7 @@ class TRexManager {
     });
   }
 
-  private startRealConsoleProcess(relPath: string, multiplier: string, duration: number): void {
+  private startRealConsoleProcess(relPath: string, multiplier: string, duration: number, testId: string): void {
     const tmpScript = path.join('/tmp', `trex_cmd_${Date.now()}.sh`);
     // Ensure -d is placed right after -f so TRex parser sets the duration limit explicitly
     const durationArg = duration > 0 ? ` -d ${duration}` : '';
@@ -740,6 +751,9 @@ EOF
 
     child.on('close', code => {
       try { fs.unlinkSync(tmpScript); } catch {}
+      if (this.activeTestId !== testId) {
+        return;
+      }
       this.addLog(`[TRex] Processo de console finalizado (Exit Code: ${code}).`);
 
       const lower = fullConsoleOutput.toLowerCase();
@@ -755,18 +769,18 @@ EOF
 
       if (hasFatalError) {
         this.addLog(`[ALERT] Falha de comunicação com o daemon TRex (porta 4501): ${fullConsoleOutput.slice(-300)}`);
-        this.finishCurrentTest('FAILED');
+        this.finishCurrentTest('FAILED', testId);
       } else {
         this.addLog(`[TRex] Injeção de tráfego enviada com sucesso por ${duration}s.`);
       }
     });
 
     // Start 100% REAL telemetry monitoring from TRex Python STLClient
-    this.startRealHardwareMonitor(duration);
+    this.startRealHardwareMonitor(duration, testId);
   }
 
   // Real Hardware Telemetry Monitor: streams real-time physical counters from TRex
-  private startRealHardwareMonitor(duration: number): void {
+  private startRealHardwareMonitor(duration: number, testId: string): void {
     if (this.realMonitorChild) {
       try { this.realMonitorChild.kill(); } catch {}
       this.realMonitorChild = null;
@@ -900,6 +914,7 @@ while True:
 
     let buffer = '';
     this.realMonitorChild.stdout.on('data', (chunk: Buffer) => {
+      if (this.activeTestId !== testId || !this.status.isRunning) return;
       buffer += chunk.toString();
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
@@ -912,12 +927,13 @@ while True:
             this.addLog(`[TRex Telemetry] ${data.error}`);
             continue;
           }
-          this.updateMetricsFromHardware(data, duration);
+          this.updateMetricsFromHardware(data, duration, testId);
         } catch {}
       }
     });
 
     this.realMonitorChild.stderr.on('data', (errChunk: Buffer) => {
+      if (this.activeTestId !== testId) return;
       const errStr = errChunk.toString().trim();
       if (errStr) {
         this.addLog(`[TRex Telemetry Err] ${errStr}`);
@@ -928,12 +944,19 @@ while True:
       this.realMonitorChild = null;
     });
 
-    // Also maintain a fallback interval to track remaining time if python script disconnects
+    // Maintain isolated fallback interval to track remaining time if python script disconnects
     if (this.activeInterval) {
       clearInterval(this.activeInterval);
+      this.activeInterval = null;
     }
     this.activeInterval = setInterval(() => {
-      if (!this.status.isRunning) return;
+      if (this.activeTestId !== testId || !this.status.isRunning) {
+        if (this.activeInterval) {
+          clearInterval(this.activeInterval);
+          this.activeInterval = null;
+        }
+        return;
+      }
       const elapsed = Math.floor((Date.now() - this.activeTestStartedAt) / 1000);
       const remaining = Math.max(0, duration - elapsed);
       this.status.elapsedSeconds = elapsed;
@@ -944,13 +967,13 @@ while True:
       }
 
       if (remaining <= 0) {
-        this.finishCurrentTest('COMPLETED');
+        this.finishCurrentTest('COMPLETED', testId);
       }
     }, 1000);
   }
 
-  private updateMetricsFromHardware(data: any, duration: number): void {
-    if (!this.status.isRunning) return;
+  private updateMetricsFromHardware(data: any, duration: number, testId: string): void {
+    if (this.activeTestId !== testId || !this.status.isRunning) return;
 
     const elapsed = Math.floor((Date.now() - this.activeTestStartedAt) / 1000);
     const remaining = Math.max(0, duration - elapsed);
@@ -1079,20 +1102,30 @@ while True:
     }
 
     if (remaining <= 0) {
-      this.finishCurrentTest('COMPLETED');
+      this.finishCurrentTest('COMPLETED', testId);
     }
   }
 
   // Active runtime telemetry ticker (calculates realistic 100GbE DPDK traffic flow)
-  private startSimulationInterval(multiplier: string, duration: number): void {
+  private startSimulationInterval(multiplier: string, duration: number, testId: string): void {
     if (this.activeInterval) {
       clearInterval(this.activeInterval);
+      this.activeInterval = null;
+    }
+    if (this.activeTestId !== testId) {
+      return;
     }
 
     const { targetGbps, targetPps } = this.parseMultiplierToGbps(multiplier);
 
     this.activeInterval = setInterval(() => {
-      if (!this.status.isRunning) return;
+      if (this.activeTestId !== testId || !this.status.isRunning) {
+        if (this.activeInterval) {
+          clearInterval(this.activeInterval);
+          this.activeInterval = null;
+        }
+        return;
+      }
 
       const elapsed = Math.floor((Date.now() - this.activeTestStartedAt) / 1000);
       const remaining = Math.max(0, duration - elapsed);
@@ -1200,12 +1233,17 @@ while True:
 
       // Natural completion when duration expires
       if (remaining <= 0) {
-        this.finishCurrentTest('COMPLETED');
+        this.finishCurrentTest('COMPLETED', testId);
       }
     }, 1000);
   }
 
   public stopCurrentTest(reason: string): { success: boolean; message: string } {
+    this.activeTestId = '';
+    if (this.activeInterval) {
+      clearInterval(this.activeInterval);
+      this.activeInterval = null;
+    }
     if (this.realMonitorChild) {
       try { this.realMonitorChild.kill(); } catch {}
       this.realMonitorChild = null;
@@ -1231,7 +1269,13 @@ while True:
   }
 
   // Finish test, drain queues, compile report and persist to reports.json
-  private finishCurrentTest(finalStatus: 'COMPLETED' | 'STOPPED' | 'FAILED'): void {
+  private finishCurrentTest(finalStatus: 'COMPLETED' | 'STOPPED' | 'FAILED', testId?: string): void {
+    if (testId && this.activeTestId && testId !== this.activeTestId) {
+      // Stale completion callback from a superseded test
+      return;
+    }
+    this.activeTestId = '';
+
     if (this.realMonitorChild) {
       try { this.realMonitorChild.kill(); } catch {}
       this.realMonitorChild = null;

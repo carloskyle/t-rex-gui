@@ -533,11 +533,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     <button
                       key={key}
                       type="button"
+                      disabled={isRunning || isSubmitting !== null}
                       onClick={() => setDurationChoice(key)}
-                      className={`p-2.5 h-10 text-xs rounded-lg border text-center transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                        durationChoice === key
-                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.25)] ring-1 ring-sky-500/40'
-                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30'
+                      className={`p-2.5 h-10 text-xs rounded-lg border text-center transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                        isRunning
+                          ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950/40 text-slate-500'
+                          : durationChoice === key
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.25)] ring-1 ring-sky-500/40 cursor-pointer'
+                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30 cursor-pointer'
                       }`}
                     >
                       <div className="font-mono text-[11px]">{item.label}</div>
@@ -551,10 +554,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     <input
                       id="duration-custom"
                       type="number"
+                      disabled={isRunning || isSubmitting !== null}
                       value={durationCustom}
                       onChange={(e) => setDurationCustom(e.target.value)}
                       placeholder="Ex: 300"
-                      className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-10 transition"
+                      className="w-full rounded-lg border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 focus:outline-none h-10 transition disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                   </div>
                 )}
@@ -565,7 +569,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 <div className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
                   <span>Ações de Injeção e Controle do Servidor:</span>
                   <span className="text-[10px] font-mono text-emerald-400 font-semibold">
-                    Duração travada: {getEffectiveDuration()}s
+                    {isRunning ? `Em execução: restam ${status?.remainingSeconds ?? 0}s` : `Duração travada: ${getEffectiveDuration()}s`}
                   </span>
                 </div>
 
@@ -573,23 +577,35 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   {/* Start Test (Server 1) */}
                   <button
                     type="button"
-                    disabled={isSubmitting !== null}
+                    disabled={isRunning || isSubmitting !== null}
                     onClick={() => handleAction('start_test')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-emerald-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-emerald-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    <span>Iniciar Server 1 ({getEffectiveDuration()}s)</span>
+                    <span>
+                      {isRunning
+                        ? status?.activeServer === 'server1'
+                          ? `Server 1 Ativo (${status?.remainingSeconds ?? 0}s)`
+                          : 'Teste em Execução'
+                        : `Iniciar Server 1 (${getEffectiveDuration()}s)`}
+                    </span>
                   </button>
 
                   {/* Start Test 2 (Server 2) */}
                   <button
                     type="button"
-                    disabled={isSubmitting !== null}
+                    disabled={isRunning || isSubmitting !== null}
                     onClick={() => handleAction('start_test2')}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-sky-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 px-4 h-10.5 text-xs font-bold text-white shadow-md shadow-sky-900/20 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   >
                     <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    <span>Iniciar Server 2 ({getEffectiveDuration()}s)</span>
+                    <span>
+                      {isRunning
+                        ? status?.activeServer === 'server2'
+                          ? `Server 2 Ativo (${status?.remainingSeconds ?? 0}s)`
+                          : 'Teste em Execução'
+                        : `Iniciar Server 2 ({getEffectiveDuration()}s)`}
+                    </span>
                   </button>
                 </div>
 
