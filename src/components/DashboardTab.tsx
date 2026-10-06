@@ -604,7 +604,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         ? status?.activeServer === 'server2'
                           ? `Server 2 Ativo (${status?.remainingSeconds ?? 0}s)`
                           : 'Teste em Execução'
-                        : `Iniciar Server 2 ({getEffectiveDuration()}s)`}
+                        : `Iniciar Server 2 (${getEffectiveDuration()}s)`}
                     </span>
                   </button>
                 </div>
