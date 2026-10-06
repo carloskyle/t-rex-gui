@@ -38,6 +38,14 @@ interface DashboardTabProps {
   onNavigateToEditor: (dir: string, profile: string) => void;
 }
 
+// Default profile preset map for each TRex mode
+const DEFAULT_PROFILES: Record<'cap2' | 'stl' | 'astf' | 'avl', string> = {
+  stl: 'imix_sitehop3.py',
+  astf: 'http_simple.py',
+  cap2: '',
+  avl: '',
+};
+
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   status,
   onRefreshStatus,
@@ -46,7 +54,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Directory & Profile selection
   const [selectedDir, setSelectedDir] = useState<'cap2' | 'stl' | 'astf' | 'avl'>('stl');
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<string>('imixsitehop.py');
+  const [selectedProfile, setSelectedProfile] = useState<string>(DEFAULT_PROFILES.stl);
 
   // Multiplier presets
   const multiplierPresets: Record<string, { label: string; value: string }> = {
@@ -135,11 +143,19 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         const dirProfiles = res.profiles[selectedDir] || [];
         setProfiles(dirProfiles);
         if (dirProfiles.length > 0) {
-          const preferred = dirProfiles.find((p) => p.name === 'imixsitehop.py' || p.name === 'imixsitehop.yaml');
-          if (preferred && (!selectedProfile || selectedProfile.startsWith('imix'))) {
-            setSelectedProfile(preferred.name);
-          } else if (!dirProfiles.some((p) => p.name === selectedProfile)) {
-            setSelectedProfile(dirProfiles[0].name);
+          const defaultTarget = DEFAULT_PROFILES[selectedDir];
+          const exactMatch = defaultTarget ? dirProfiles.find((p) => p.name === defaultTarget) : null;
+
+          if (exactMatch) {
+            setSelectedProfile(exactMatch.name);
+          } else {
+            // Intelligent fallback for stl and astf presets if exact file is not present
+            const preferred = dirProfiles.find((p) => {
+              if (selectedDir === 'stl') return p.name.includes('imix');
+              if (selectedDir === 'astf') return p.name.includes('http');
+              return false;
+            });
+            setSelectedProfile(preferred ? preferred.name : dirProfiles[0].name);
           }
         }
       })
@@ -412,11 +428,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     <button
                       key={dir}
                       type="button"
-                      onClick={() => setSelectedDir(dir)}
-                      className={`h-10 px-3 text-xs font-mono font-medium rounded-lg border text-center transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                        selectedDir === dir
-                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-bold shadow-[0_0_12px_rgba(14,165,233,0.3)] ring-1 ring-sky-500/50'
-                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30'
+                      disabled={isRunning || isSubmitting !== null}
+                      onClick={() => {
+                        setSelectedDir(dir);
+                        if (dir === 'astf' && multiplierChoice.startsWith('stl_')) {
+                          setMultiplierChoice('astf_100k');
+                        } else if (dir === 'stl' && multiplierChoice.startsWith('astf_')) {
+                          setMultiplierChoice('stl_1g');
+                        }
+                      }}
+                      className={`h-10 px-3 text-xs font-mono font-medium rounded-lg border text-center transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                        isRunning
+                          ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950/40 text-slate-500'
+                          : selectedDir === dir
+                          ? 'border-sky-500 bg-sky-500/20 text-sky-200 font-bold shadow-[0_0_12px_rgba(14,165,233,0.3)] ring-1 ring-sky-500/50 cursor-pointer'
+                          : 'border-slate-800/90 bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/30 cursor-pointer'
                       }`}
                     >
                       {dir}
