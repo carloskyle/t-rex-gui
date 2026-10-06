@@ -41,7 +41,7 @@ interface DashboardTabProps {
 // Default profile preset map for each TRex mode
 const DEFAULT_PROFILES: Record<'cap2' | 'stl' | 'astf' | 'avl', string> = {
   stl: 'imix_sitehop3.py',
-  astf: 'http_simple.py',
+  astf: 'http_sitehop.py',
   cap2: '',
   avl: '',
 };
